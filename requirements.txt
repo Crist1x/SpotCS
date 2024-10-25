@@ -1,0 +1,6 @@
+# Install aiogram on steroids by default
+aiogram
+ujson
+aiohttp[speedups]
+python-dotenv
+
