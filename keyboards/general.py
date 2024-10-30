@@ -100,6 +100,47 @@ ranks_ikb = InlineKeyboardMarkup(inline_keyboard=[
     ]
 ], resize_keyboard=True)
 
+ranks_ikb_trans = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(
+            text="Сильвер",
+            callback_data="rank_silver_trans"
+        ), InlineKeyboardButton(
+            text="Звезда",
+            callback_data="rank_gold_nova_trans"
+        )
+    ], [
+        InlineKeyboardButton(
+            text="Калаш",
+            callback_data="rank_ak_trans"
+        ),InlineKeyboardButton(
+            text="Калаш с венками",
+            callback_data="rank_ak_wreaths_trans"
+        )
+    ], [InlineKeyboardButton(
+            text="Два калаша",
+            callback_data="rank_two_ak_trans"
+        ), InlineKeyboardButton(
+            text="Биг стар",
+            callback_data="rank_big_star_trans"
+        )
+    ], [InlineKeyboardButton(
+            text="Беркут",
+            callback_data="rank_berkut_trans"
+        ), InlineKeyboardButton(
+            text="Лем",
+            callback_data="rank_lem_trans"
+        )
+    ], [InlineKeyboardButton(
+            text="Суприм",
+            callback_data="rank_suprim_trans"
+        ), InlineKeyboardButton(
+            text="Глобал",
+            callback_data="rank_global_trans"
+        )
+    ]
+], resize_keyboard=True)
+
 transfer_ikb = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(

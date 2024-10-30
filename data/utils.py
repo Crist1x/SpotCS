@@ -43,7 +43,7 @@ class Card:
         self.score = card_info[4]
 
 
-async def draw_card(typ, tek, all, card: Card, callback:types.CallbackQuery = False, message:Message = False):
+async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types.CallbackQuery = False, message:Message = False):
     text = f"""🔤 Никнейм: <b>{card.name}</b> 
     
 🕹 Команда: <b>{card.team}</b>
@@ -55,47 +55,103 @@ async def draw_card(typ, tek, all, card: Card, callback:types.CallbackQuery = Fa
     photo = FSInputFile(path=f"./cards/{card.id}.webp")
 
     if typ == "base":
-        collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="⏪",
-                    callback_data="first_card"
-                ), InlineKeyboardButton(
+        if is_transfer:
+            collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="⏪",
+                        callback_data="first_card_trans"
+                    ), InlineKeyboardButton(
                     text="⬅️",
-                    callback_data="prev_card"
-                ), InlineKeyboardButton(
-                    text=f"{tek}/{all}",
-                    callback_data="nothing"
-                ), InlineKeyboardButton(
-                    text="➡️",
-                    callback_data="next_card"
-                ), InlineKeyboardButton(
-                    text="⏩",
-                    callback_data="last_card"
-                )
-            ], [InlineKeyboardButton(
-                    text="🔍 Поиск",
-                    callback_data="search"
-                )], [InlineKeyboardButton(
-                    text="🎖 По званию",
-                    callback_data="by_rank"
-                )], [InlineKeyboardButton(
-                    text="🕹 По команде",
-                    callback_data="by_team"
-                )]
-        ], resize_keyboard=True)
-    elif typ == "transfer":
-        collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="⏪",
-                    callback_data=f"first_card_{typ}"
-                ), InlineKeyboardButton(
-                text="⬅️",
-                callback_data=f"prev_card_{typ}"
+                    callback_data="prev_card_trans"
                 ), InlineKeyboardButton(
                     text=f"➕",
                     callback_data=f"add_card"
+                ), InlineKeyboardButton(
+                    text="➡️",
+                    callback_data="next_card_trans"
+                ), InlineKeyboardButton(
+                    text="⏩",
+                    callback_data="last_card_trans"
+                )
+                ], [InlineKeyboardButton(
+                    text="🔍 Поиск",
+                    callback_data="search_trans"
+                )], [InlineKeyboardButton(
+                    text="🎖 По званию",
+                    callback_data="by_rank_trans"
+                )], [InlineKeyboardButton(
+                    text="🕹 По команде",
+                    callback_data="by_team_trans"
+                )]
+            ], resize_keyboard=True)
+        else:
+            collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="⏪",
+                        callback_data="first_card"
+                    ), InlineKeyboardButton(
+                        text="⬅️",
+                        callback_data="prev_card"
+                    ), InlineKeyboardButton(
+                        text=f"{tek}/{all}",
+                        callback_data="nothing"
+                    ), InlineKeyboardButton(
+                        text="➡️",
+                        callback_data="next_card"
+                    ), InlineKeyboardButton(
+                        text="⏩",
+                        callback_data="last_card"
+                    )
+                ], [InlineKeyboardButton(
+                        text="🔍 Поиск",
+                        callback_data="search"
+                    )], [InlineKeyboardButton(
+                        text="🎖 По званию",
+                        callback_data="by_rank"
+                    )], [InlineKeyboardButton(
+                        text="🕹 По команде",
+                        callback_data="by_team"
+                    )]
+            ], resize_keyboard=True)
+    else:
+        if is_transfer:
+            collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="⏪",
+                        callback_data=f"first_card_trans_{typ}"
+                    ), InlineKeyboardButton(
+                    text="⬅️",
+                    callback_data=f"prev_card_trans_{typ}"
+                ), InlineKeyboardButton(
+                    text=f"➕",
+                    callback_data=f"add_card"
+                ), InlineKeyboardButton(
+                    text="➡️",
+                    callback_data=f"next_card_trans_{typ}"
+                ), InlineKeyboardButton(
+                    text="⏩",
+                    callback_data=f"last_card_trans_{typ}"
+                )
+                ], [InlineKeyboardButton(
+                    text="В коллекцию",
+                    callback_data="to_collection"
+                )]
+            ], resize_keyboard=True)
+        else:
+            collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="⏪",
+                        callback_data=f"first_card_{typ}"
+                    ), InlineKeyboardButton(
+                    text="⬅️",
+                    callback_data=f"prev_card_{typ}"
+                ), InlineKeyboardButton(
+                    text=f"{tek}/{all}",
+                    callback_data=f"nothing_{typ}"
                 ), InlineKeyboardButton(
                     text="➡️",
                     callback_data=f"next_card_{typ}"
@@ -103,32 +159,11 @@ async def draw_card(typ, tek, all, card: Card, callback:types.CallbackQuery = Fa
                     text="⏩",
                     callback_data=f"last_card_{typ}"
                 )
-            ]
-        ], resize_keyboard=True)
-    else:
-        collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="⏪",
-                    callback_data=f"first_card_{typ}"
-                ), InlineKeyboardButton(
-                text="⬅️",
-                callback_data=f"prev_card_{typ}"
-            ), InlineKeyboardButton(
-                text=f"{tek}/{all}",
-                callback_data=f"nothing_{typ}"
-            ), InlineKeyboardButton(
-                text="➡️",
-                callback_data=f"next_card_{typ}"
-            ), InlineKeyboardButton(
-                text="⏩",
-                callback_data=f"last_card_{typ}"
-            )
-            ], [InlineKeyboardButton(
-                text="В коллекцию",
-                callback_data="to_collection"
-            )]
-        ], resize_keyboard=True)
+                ], [InlineKeyboardButton(
+                    text="В коллекцию",
+                    callback_data="to_collection"
+                )]
+            ], resize_keyboard=True)
 
     if message:
         return await message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
@@ -137,13 +172,17 @@ async def draw_card(typ, tek, all, card: Card, callback:types.CallbackQuery = Fa
             try:
                 await callback.message.edit_media(InputMediaPhoto(media=photo, caption=text), parse_mode="HTML", reply_markup=collection_ikb)
             except Exception as e:
-                await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
+                if is_transfer:
+                    print(e)
+                    await callback.answer("")
+                else:
+                    await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
         else:
             await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
 
 search_cards = []
 
-async def sort_by_rank(rank, callback: types.CallbackQuery):
+async def sort_by_rank(rank, callback: types.CallbackQuery, trans=False):
     global search_cards
     conn = sqlite3.connect('./database.db')
     cursor = conn.cursor()
@@ -156,7 +195,10 @@ async def sort_by_rank(rank, callback: types.CallbackQuery):
     if len(cards) >= 1:
         if len(cards[0]) == 5:
             card = Card(cards[0])
-            await draw_card(typ="rank", tek=1, all=length, card=card, callback=callback)
+            if trans:
+                await draw_card(typ="rank", tek=1, all=length, is_transfer=True, card=card, message=callback.message)
+            else:
+                await draw_card(typ="rank", tek=1, all=length, card=card, message=callback.message)
         else:
             await callback.message.answer(" ❌ Кажется, в твоей коллекции нет таких карт...")
     else:

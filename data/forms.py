@@ -1,7 +1,9 @@
 import sqlite3
 from cgitb import handler
+from idlelib.pyparse import trans
 from logging import exception
 
+from aiogram import types
 from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -123,33 +125,46 @@ async def get_answer(message: Message, state: FSMContext):
 
 class Search(StatesGroup):
     NICKNAME = State()
+    NICKNAME_TRANS = State()
 
 
 search_cards = []
 
-async def get_nickname(message: Message, state: FSMContext):
+async def get_nickname_temp(message: Message, state: FSMContext, is_trans=False):
     global search_cards
     handlers.callbacks.card_index = 0
     await state.update_data(nickname=message.text.strip())
     data = await state.get_data()
     nickname = data['nickname']
     await state.clear()
-    print(nickname)
 
     conn = sqlite3.connect('./database.db')
     cursor = conn.cursor()
-    length = cursor.execute(f"SELECT COUNT(cards.id) FROM cards, collections WHERE cards.id = collections.card_id AND cards.player = '{nickname}' AND collections.user_id='{message.from_user.id}'").fetchone()[0]
-    cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.player = '{nickname}' AND collections.user_id='{message.from_user.id}'").fetchall()[::-1]
+    length = cursor.execute(
+        f"SELECT COUNT(cards.id) FROM cards, collections WHERE cards.id = collections.card_id AND cards.player = '{nickname}' AND collections.user_id='{message.from_user.id}'").fetchone()[
+        0]
+    cards = cursor.execute(
+        f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.player = '{nickname}' AND collections.user_id='{message.from_user.id}'").fetchall()[
+            ::-1]
     search_cards = cards
 
     if len(cards) >= 1:
         if len(cards[0]) == 5:
             card = utils.Card(cards[0])
-            await draw_card(typ="search", tek=1, all=length, card=card, message=message)
+            if is_trans:
+                await draw_card(typ="search", tek=1, all=length, is_transfer=True, card=card, message=message)
+            else:
+                await draw_card(typ="search", tek=1, all=length, card=card, message=message)
         else:
             await message.answer(" ❌ Кажется, в твоей коллекции нет таких карт...")
     else:
         await message.answer(" ❌ Кажется, в твоей коллекции нет таких карт...")
+
+async def get_nickname(message: Message, state: FSMContext):
+    await get_nickname_temp(message, state)
+
+async def get_nickname_trans(message: Message, state: FSMContext):
+    await get_nickname_temp(message, state, is_trans=True)
 
 
 class Team(StatesGroup):

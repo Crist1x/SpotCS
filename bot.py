@@ -23,9 +23,9 @@ dp.callback_query.register(handlers.callbacks.next_card, F.data.startswith("next
 dp.callback_query.register(handlers.callbacks.first_card, F.data.startswith("first_card"))
 dp.callback_query.register(handlers.callbacks.last_card, F.data.startswith("last_card"))
 dp.callback_query.register(handlers.callbacks.to_collection, F.data == "to_collection")
-dp.callback_query.register(handlers.callbacks.search, F.data == "search")
-dp.callback_query.register(handlers.callbacks.by_rank, F.data == "by_rank")
-dp.callback_query.register(handlers.callbacks.by_team, F.data == "by_team")
+dp.callback_query.register(handlers.callbacks.search, F.data.startswith("search"))
+dp.callback_query.register(handlers.callbacks.by_rank, F.data.startswith("by_rank"))
+dp.callback_query.register(handlers.callbacks.by_team, F.data.startswith("by_team"))
 dp.callback_query.register(handlers.callbacks.create_transfer, F.data == "create_transfer")
 
 dp.callback_query.register(handlers.callbacks.sort_rank, F.data.startswith("rank_"))
@@ -40,6 +40,7 @@ dp.message.register(get_correct, Quiz.CORRECT)
 dp.message.register(get_answer, GetAnswer.ANSWER)
 
 dp.message.register(get_nickname, Search.NICKNAME)
+dp.message.register(get_nickname_trans, Search.NICKNAME_TRANS)
 dp.message.register(get_team, Team.TEAM)
 
 @dp.message(Command("help"))

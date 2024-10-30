@@ -1,3 +1,5 @@
+from idlelib.pyparse import trans
+
 from aiogram import types
 import sqlite3
 
@@ -16,7 +18,8 @@ import time
 
 from handlers.admin_actions import add_card
 from keyboards.admin import cansel_kb, admin_menu_kb
-from keyboards.general import channel_ikb, main_menu_kb, ranks_ikb
+from keyboards.general import channel_ikb, main_menu_kb, ranks_ikb, ranks_ikb_trans
+
 
 # Вход в игру
 async def in_game(callback: types.CallbackQuery):
@@ -162,7 +165,7 @@ card_team_index = 0
 
 async def next_card(callback: types.CallbackQuery):
     #TODO: поменять технологию получения списка всех кард
-    if callback.data.split("_")[-1] == "card":
+    if callback.data.split("_")[-1] == "card" or callback.data.split("_")[-1] == "trans":
         global card_index
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -172,7 +175,10 @@ async def next_card(callback: types.CallbackQuery):
             card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_ids[card_index]}'").fetchone()
             cursor.close()
             card = utils.Card(card_info)
-            await draw_card(typ="base", tek=card_index + 1, all=len(user_card_ids), card=card, callback=callback)
+            if callback.data.split("_")[-1] == "trans":
+                await draw_card(typ="base", tek=card_index + 1, all=len(user_card_ids), is_transfer=True, card=card, callback=callback)
+            else:
+                await draw_card(typ="base", tek=card_index + 1, all=len(user_card_ids), card=card, callback=callback)
         else:
             await callback.answer("Это последняя карточка в коллекции")
             cursor.close()
@@ -184,7 +190,10 @@ async def next_card(callback: types.CallbackQuery):
         if card_search_index + 1 < len(search_cards):
             card_search_index += 1
             card = utils.Card(search_cards[card_search_index])
-            await draw_card(typ="search", tek=card_search_index + 1, all=len(search_cards), card=card, callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                await draw_card(typ="search", tek=card_search_index + 1, is_transfer=True, all=len(search_cards), card=card, callback=callback)
+            else:
+                await draw_card(typ="search", tek=card_search_index + 1, all=len(search_cards), card=card, callback=callback)
         else:
             await callback.answer("Это последняя карточка")
 
@@ -194,8 +203,12 @@ async def next_card(callback: types.CallbackQuery):
         if card_rank_index + 1 < len(search_cards):
             card_rank_index += 1
             card = utils.Card(search_cards[card_rank_index])
-            await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), card=card,
-                            callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), is_transfer=True, card=card,
+                                callback=callback)
+            else:
+                await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), card=card,
+                                callback=callback)
         else:
             await callback.answer("Это последняя карточка")
 
@@ -212,7 +225,7 @@ async def next_card(callback: types.CallbackQuery):
 
 
 async def prev_card(callback: types.CallbackQuery):
-    if callback.data.split("_")[-1] == "card":
+    if callback.data.split("_")[-1] == "card" or callback.data.split("_")[-1] == "trans":
         global card_index
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -225,7 +238,10 @@ async def prev_card(callback: types.CallbackQuery):
                 f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_ids[card_index]}'").fetchone()
             card = utils.Card(card_info)
             cursor.close()
-            await draw_card(typ="base", tek=card_index + 1, all=len(user_card_ids), card=card, callback=callback)
+            if callback.data.split("_")[-1] == "trans":
+                await draw_card(typ="base", tek=card_index + 1, all=len(user_card_ids), is_transfer=True, card=card, callback=callback)
+            else:
+                await draw_card(typ="base", tek=card_index + 1, all=len(user_card_ids), card=card, callback=callback)
         else:
             cursor.close()
             await callback.answer("Это первая карточка в коллекции")
@@ -237,7 +253,10 @@ async def prev_card(callback: types.CallbackQuery):
         if card_search_index - 1 >= 0:
             card_search_index -= 1
             card = utils.Card(search_cards[card_search_index])
-            await draw_card(typ="search", tek=card_search_index + 1, all=len(search_cards), card=card, callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                await draw_card(typ="search", tek=card_search_index + 1, is_transfer=True, all=len(search_cards), card=card, callback=callback)
+            else:
+                await draw_card(typ="search", tek=card_search_index + 1, all=len(search_cards), card=card, callback=callback)
         else:
             await callback.answer("Это первая карточка")
 
@@ -248,8 +267,12 @@ async def prev_card(callback: types.CallbackQuery):
         if card_rank_index - 1 >= 0:
             card_rank_index -= 1
             card = utils.Card(search_cards[card_rank_index])
-            await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), card=card,
-                            callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), is_transfer=True, card=card,
+                                callback=callback)
+            else:
+                await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), card=card,
+                                callback=callback)
         else:
             await callback.answer("Это первая карточка")
 
@@ -266,7 +289,7 @@ async def prev_card(callback: types.CallbackQuery):
 
 
 async def first_card(callback: types.CallbackQuery):
-    if callback.data.split("_")[-1] == "card":
+    if callback.data.split("_")[-1] == "card" or callback.data.split("_")[-1] == "trans":
         global card_index
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -278,7 +301,10 @@ async def first_card(callback: types.CallbackQuery):
             card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_id}'").fetchone()
             cursor.close()
             card = utils.Card(card_info)
-            await draw_card(typ="base", tek=1, all=length, card=card, callback=callback)
+            if callback.data.split("_")[-1] == "trans":
+                await draw_card(typ="base", tek=1, all=length, is_transfer=True, card=card, callback=callback)
+            else:
+                await draw_card(typ="base", tek=1, all=length, card=card, callback=callback)
         else:
             cursor.close()
             await callback.answer("Это последняя карта, добавленная в вашу коллекцию")
@@ -290,7 +316,10 @@ async def first_card(callback: types.CallbackQuery):
         if card_search_index != 0:
             card_search_index = 0
             card = utils.Card(search_cards[card_search_index])
-            await draw_card(typ="search", tek=card_search_index + 1, all=len(search_cards), card=card, callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                await draw_card(typ="search", tek=card_search_index + 1, is_transfer=True, all=len(search_cards), card=card, callback=callback)
+            else:
+                await draw_card(typ="search", tek=card_search_index + 1, all=len(search_cards), card=card, callback=callback)
         else:
             await callback.answer("Это последняя карта, добавленная в вашу коллекцию")
 
@@ -301,8 +330,12 @@ async def first_card(callback: types.CallbackQuery):
         if card_rank_index != 0:
             card_rank_index = 0
             card = utils.Card(search_cards[card_rank_index])
-            await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), card=card,
-                            callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), is_transfer=True, card=card,
+                                callback=callback)
+            else:
+                await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), card=card,
+                                callback=callback)
         else:
             await callback.answer("Это последняя карта, добавленная в вашу коллекцию")
 
@@ -318,7 +351,7 @@ async def first_card(callback: types.CallbackQuery):
             await callback.answer("Это последняя карта, добавленная в вашу коллекцию")
 
 async def last_card(callback: types.CallbackQuery):
-    if callback.data.split("_")[-1] == "card":
+    if callback.data.split("_")[-1] == "card" or callback.data.split("_")[-1] == "trans":
         global card_index
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -331,7 +364,10 @@ async def last_card(callback: types.CallbackQuery):
             card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_id[card_index][0]}'").fetchone()
             cursor.close()
             card = utils.Card(card_info)
-            await draw_card(typ="base", tek=card_index+1, all=length, card=card, callback=callback)
+            if callback.data.split("_")[-1] == "trans":
+                await draw_card(typ="base", tek=card_index + 1, is_transfer=True, all=length, card=card, callback=callback)
+            else:
+                await draw_card(typ="base", tek=card_index+1, all=length, card=card, callback=callback)
         else:
             cursor.close()
             await callback.answer("Это первая карта, добавленная в вашу коллекцию")
@@ -342,7 +378,10 @@ async def last_card(callback: types.CallbackQuery):
         if (card_search_index != len(search_cards) - 1) and len(search_cards) != 1:
             card_search_index = len(search_cards) - 1
             card = utils.Card(search_cards[card_search_index])
-            await draw_card(typ="search", tek=card_search_index + 1, all=len(search_cards), card=card, callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                await draw_card(typ="search", tek=card_search_index + 1, is_transfer=True, all=len(search_cards), card=card, callback=callback)
+            else:
+                await draw_card(typ="search", tek=card_search_index + 1, all=len(search_cards), card=card, callback=callback)
         else:
             await callback.answer("Это первая карта, добавленная в вашу коллекцию")
 
@@ -353,8 +392,12 @@ async def last_card(callback: types.CallbackQuery):
         if (card_rank_index != len(search_cards) - 1) and len(search_cards) != 1:
             card_rank_index = len(search_cards) - 1
             card = utils.Card(search_cards[card_rank_index])
-            await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), card=card,
-                            callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), is_transfer=True, card=card,
+                                callback=callback)
+            else:
+                await draw_card(typ="rank", tek=card_rank_index + 1, all=len(search_cards), card=card,
+                                callback=callback)
         else:
             await callback.answer("Это первая карта, добавленная в вашу коллекцию")
 
@@ -388,18 +431,33 @@ async def to_collection(callback: types.CallbackQuery):
 
 async def search(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("📝 Введи никнейм игрока, которого ты хочешь найти в своей коллекции:")
-    await state.set_state(Search.NICKNAME)
+    if callback.data.split("_")[-1] != "trans":
+        await state.set_state(Search.NICKNAME)
+    else:
+        await state.set_state(Search.NICKNAME_TRANS)
 
 
 async def by_rank(callback: types.CallbackQuery):
-    await callback.message.answer(
-        "⚜️ Здесь ты можешь отфильтровать карты из своей коллекции по званию. Выбери интересующее звание из списка ниже:",
-        reply_markup=ranks_ikb)
+    if callback.data.split("_")[-1] == "trans":
+        await callback.message.answer(
+            "⚜️ Здесь ты можешь отфильтровать карты из своей коллекции по званию. Выбери интересующее звание из списка ниже:",
+            reply_markup=ranks_ikb_trans)
+    else:
+        await callback.message.answer(
+            "⚜️ Здесь ты можешь отфильтровать карты из своей коллекции по званию. Выбери интересующее звание из списка ниже:",
+            reply_markup=ranks_ikb)
 
 async def sort_rank(callback: types.CallbackQuery):
     total = ""
     await callback.message.delete()
-    match callback.data:
+    t = False
+    if callback.data.split("_")[-1] == "trans":
+        c = callback.data[:-6]
+        t = True
+    else:
+        c = callback.data
+
+    match c:
         case "rank_silver":
             total = "Сильвер"
         case "rank_gold_nova":
@@ -420,8 +478,7 @@ async def sort_rank(callback: types.CallbackQuery):
             total = "Суприм"
         case "rank_global":
             total = "Глобал"
-
-    await sort_by_rank(total, callback)
+    await sort_by_rank(total, callback, trans=t)
 
 
 async def by_team(callback: types.CallbackQuery, state: FSMContext):
@@ -446,6 +503,6 @@ async def create_transfer(callback: types.CallbackQuery):
     cursor.close()
     if len(card_info) == 5:
         card = utils.Card(card_info)
-        await draw_card(typ="transfer", tek=1, all=length, card=card, callback=callback)
+        await draw_card(typ="base", tek=1, is_transfer=True, all=length, card=card, message=callback.message)
     else:
         await callback.message.answer("Кажется, в твоей коллекции нет карт ❌")
