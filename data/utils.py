@@ -43,7 +43,7 @@ class Card:
         self.score = card_info[4]
 
 
-async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types.CallbackQuery = False, message:Message = False):
+async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types.CallbackQuery = False, message:Message = False, send=None):
     text = f"""🔤 Никнейм: <b>{card.name}</b> 
     
 🕹 Команда: <b>{card.team}</b>
@@ -56,6 +56,15 @@ async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types
 
     if typ == "base":
         if is_transfer:
+            conn = sqlite3.connect('./database.db')
+            cursor = conn.cursor()
+            if callback:
+                cursor.execute(f"UPDATE indexes SET card_transfer_index='{card.id}' WHERE user_id='{callback.from_user.id}'")
+                conn.commit()
+            else:
+                cursor.execute(f"UPDATE indexes SET card_transfer_index='{card.id}' WHERE user_id='{message.from_user.id}'")
+                conn.commit()
+            cursor.close()
             collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
                 [
                     InlineKeyboardButton(
@@ -117,6 +126,14 @@ async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types
             ], resize_keyboard=True)
     else:
         if is_transfer:
+            conn = sqlite3.connect('./database.db')
+            cursor = conn.cursor()
+            if callback:
+                cursor.execute(f"UPDATE indexes SET card_transfer_index='{card.id}' WHERE user_id='{callback.from_user.id}'")
+            else:
+                cursor.execute(f"UPDATE indexes SET card_transfer_index='{card.id}' WHERE user_id='{message.from_user.id}'")
+            conn.commit()
+            cursor.close()
             collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
                 [
                     InlineKeyboardButton(
@@ -168,17 +185,21 @@ async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types
     if message:
         return await message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
     if callback:
-        if callback.data != "to_collection":
-            try:
-                await callback.message.edit_media(InputMediaPhoto(media=photo, caption=text), parse_mode="HTML", reply_markup=collection_ikb)
-            except Exception as e:
-                if is_transfer:
-                    print(e)
-                    await callback.answer("")
-                else:
-                    await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
-        else:
+        if send:
             await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
+        else:
+            if callback.data != "to_collection":
+                try:
+                    await callback.message.edit_media(InputMediaPhoto(media=photo, caption=text), parse_mode="HTML", reply_markup=collection_ikb)
+                except Exception as e:
+                    if is_transfer:
+                        print(e)
+                        await callback.answer("")
+                    else:
+                        print(e)
+                        await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
+            else:
+                await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
 
 search_cards = []
 

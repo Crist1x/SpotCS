@@ -27,8 +27,13 @@ dp.callback_query.register(handlers.callbacks.search, F.data.startswith("search"
 dp.callback_query.register(handlers.callbacks.by_rank, F.data.startswith("by_rank"))
 dp.callback_query.register(handlers.callbacks.by_team, F.data.startswith("by_team"))
 dp.callback_query.register(handlers.callbacks.create_transfer, F.data == "create_transfer")
+dp.callback_query.register(handlers.callbacks.add_card, F.data == "add_card")
 
 dp.callback_query.register(handlers.callbacks.sort_rank, F.data.startswith("rank_"))
+dp.callback_query.register(handlers.callbacks.accept_transfer, F.data.startswith("accept_transfer"))
+dp.callback_query.register(handlers.callbacks.decline_transfer, F.data.startswith("decline_transfer"))
+dp.callback_query.register(handlers.callbacks.last_accept, F.data.startswith("last_accept"))
+dp.callback_query.register(handlers.callbacks.last_decline, F.data.startswith("last_decline"))
 
 dp.message.register(get_question, Quiz.QUESTION)
 dp.message.register(get_first, Quiz.FIRST_V)
@@ -42,6 +47,7 @@ dp.message.register(get_answer, GetAnswer.ANSWER)
 dp.message.register(get_nickname, Search.NICKNAME)
 dp.message.register(get_nickname_trans, Search.NICKNAME_TRANS)
 dp.message.register(get_team, Team.TEAM)
+dp.message.register(get_transfer_id, TransferID.ID)
 
 @dp.message(Command("help"))
 async def help_func(message: Message):

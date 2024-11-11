@@ -74,20 +74,25 @@ async def get_card(message: Message):
 @router.message(F.text == "Моя коллекция")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
-        callbacks.card_index = 0
         await message.answer("🗃 Здесь ты можешь посмотреть свою коллекцию карт. Воспользуйся кнопками для удобной навигации по этому разделу.")
 
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
-        user_card_id = cursor.execute(f"SELECT card_id FROM collections WHERE user_id='{message.from_user.id}'").fetchall()[::-1][0][0]
-        length = cursor.execute(f"SELECT COUNT(card_id) FROM collections WHERE user_id='{message.from_user.id}'").fetchone()[0]
-        card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_id}'").fetchone()
-        cursor.close()
-        if len(card_info) == 5:
-            card = utils.Card(card_info)
-            await draw_card(typ="base", tek=1, all=length, card=card, message=message)
-        else:
+        cursor.execute(f"UPDATE indexes SET card_index=0 WHERE user_id='{message.from_user.id}'")
+        conn.commit()
+        try:
+            user_card_id = cursor.execute(f"SELECT card_id FROM collections WHERE user_id='{message.from_user.id}'").fetchall()[::-1][0][0]
+            length = cursor.execute(f"SELECT COUNT(card_id) FROM collections WHERE user_id='{message.from_user.id}'").fetchone()[0]
+            card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_id}'").fetchone()
+            cursor.close()
+            if len(card_info) == 5:
+                card = utils.Card(card_info)
+                await draw_card(typ="base", tek=1, all=length, card=card, message=message)
+            else:
+                await message.answer("Кажется, в твоей коллекции нет карт ❌")
+        except IndexError:
             await message.answer("Кажется, в твоей коллекции нет карт ❌")
+
 
 
     else:
@@ -99,7 +104,7 @@ async def get_card(message: Message):
 @router.message(F.text == "Обмен")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
-        await message.answer("🔄 Здесь ты можешь создавать и управлять своими обменами, а также смотреть историю успешных обменов. Выбери действие из кнопок ниже:", reply_markup=transfer_ikb)
+        await message.answer(f"🔄 <b>Твой ID: <code>{message.from_user.id}</code></b>. Здесь ты можешь создавать и управлять своими обменами, а также смотреть историю успешных обменов. Выбери действие из кнопок ниже:", reply_markup=transfer_ikb, parse_mode="HTML")
     else:
         await message.delete()
         await message.answer('<b>Для продолжения игры необходимо подписать на наш канал</b>✅',
