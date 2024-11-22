@@ -2,7 +2,7 @@ from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from data.forms import Quiz
+from data.forms import Quiz, AddCard
 from dispatcher import dp
 
 from aiogram import F
@@ -12,8 +12,9 @@ from keyboards.admin import cansel_kb
 router = Router()
 
 @dp.message(IsOwnerFilter(is_owner=True), F.text == "Добавить карту")
-async def add_card(message: Message):
-    await message.answer("В разработке")
+async def add_card(message: Message, state: FSMContext):
+    await message.answer("Пришлите фотографию карточки: ", reply_markup=cansel_kb)
+    await state.set_state(AddCard.PHOTO)
 
 @dp.message(IsOwnerFilter(is_owner=True), F.text == "Забанить")
 async def ban(message: Message):

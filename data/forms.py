@@ -14,6 +14,7 @@ from data.utils import draw_card
 from dispatcher import bot
 from keyboards.admin import admin_menu_kb, confirm_quiz
 from keyboards.general import main_menu_kb
+from os import listdir
 
 
 class Quiz(StatesGroup):
@@ -246,11 +247,13 @@ async def get_transfer_id(message: Message, state: FSMContext):
             cursor.close()
         except Exception as e:
             print(e)
+            cursor.execute(f"INSERT INTO collections ('user_id', 'card_id') VALUES ('{message.from_user.id}', '{card_id}')")
+            conn.commit()
             await message.answer("❌ Похоже, что-то пошло не так")
             cursor.close()
     else:
         if not user_exist:
-            await message.answer("❌ Похоже, игрока с таким айди не существует")
+            await message.answer("❌ Похоже, игрока с таким ID не существует")
             cursor.close()
         elif is_active:
             await message.answer("❌ Вы уже отправили запрос на обмен этому пользователю. Дождитесь ответа, чтобы продолжить обмениваться")
@@ -259,3 +262,50 @@ async def get_transfer_id(message: Message, state: FSMContext):
             await message.answer("❌ У игрока нет карт для обмена на данный момент.")
             cursor.close()
 
+
+class AddCard(StatesGroup):
+    PHOTO = State()
+    NICKNAME = State()
+    TEAM = State()
+    RANK = State()
+
+
+async def get_card_photo(message: Message, state: FSMContext):
+    await state.update_data(photo=message.text)
+    data = await state.get_data()
+    try:
+        files = [int(f.split(".")[0]) for f in listdir("./cards/")]
+        await message.bot.download(file=message.photo[-1].file_id, destination="./cards/100.webp")
+    except Exception as e:
+        if data["photo"] != "Отмена":
+            await message.answer("Напиши ник игрока: ")
+            await state.set_state(AddCard.NICKNAME)
+        else:
+            await message.answer("Вы вернулись в меню", reply_markup=admin_menu_kb)
+            await state.clear()
+
+async def get_card_nickname(message: Message, state: FSMContext):
+    await state.update_data(nickname=message.text)
+    data = await state.get_data()
+    if data["nickname"] != "Отмена":
+        await message.answer("Напиши команду игрока: ")
+        await state.set_state(AddCard.TEAM)
+    else:
+        await message.answer("Вы вернулись в меню", reply_markup=admin_menu_kb)
+        await state.clear()
+
+async def get_card_team(message: Message, state: FSMContext):
+    await state.update_data(team=message.text)
+    data = await state.get_data()
+    if data["team"] != "Отмена":
+        await message.answer("Напиши ранг игрока: ")
+        await state.set_state(AddCard.RANK)
+    else:
+        await message.answer("Вы вернулись в меню", reply_markup=admin_menu_kb)
+        await state.clear()
+
+async def get_card_rank(message: Message, state: FSMContext):
+    await state.update_data(rank=message.text)
+    data = await state.get_data()
+    await state.clear()
+    print(data)

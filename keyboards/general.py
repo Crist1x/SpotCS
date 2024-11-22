@@ -26,22 +26,22 @@ channel_ikb = InlineKeyboardMarkup(inline_keyboard=[
 ], resize_keyboard=True)
 
 main_menu_kb = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="Получить карту")],
-        [KeyboardButton(text="Моя коллекция"), KeyboardButton(text="Обмен")],
-        [KeyboardButton(text="Мини-игры"), KeyboardButton(text="Донат")]
+        [KeyboardButton(text="🃏 Получить карту")],
+        [KeyboardButton(text="🗂 Моя коллекция"), KeyboardButton(text="↔️ Обмен")],
+        [KeyboardButton(text="🎰 Мини-игры"), KeyboardButton(text="🛒 Магазин")]
     ], resize_keyboard=True)
 
 mini_games_ikb = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(
-            text="Рандом 🎲",
+            text="🎲 Рандом",
             callback_data="random"
         ), InlineKeyboardButton(
-            text="Лаки Шот 🏀",
+            text="🎯 Лаки Шот",
             callback_data="lucky_shot"
         )
     ], [InlineKeyboardButton(
-            text="Квиз 🔍",
+            text="❓ Квиз",
             callback_data="quiz"
         )
     ]
@@ -154,5 +154,16 @@ transfer_ikb = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(
             text="✅ Завершенные обмены",
             callback_data="my_transfers"
+    )]
+], resize_keyboard=True)
+
+market_ikb = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(
+            text="🪙 Донат",
+            callback_data="donate"
+    )], [InlineKeyboardButton(
+            text="🛍 Покупки",
+            callback_data="buy"
     )]
 ], resize_keyboard=True)

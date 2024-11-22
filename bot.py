@@ -27,6 +27,8 @@ dp.callback_query.register(handlers.callbacks.search, F.data.startswith("search"
 dp.callback_query.register(handlers.callbacks.by_rank, F.data.startswith("by_rank"))
 dp.callback_query.register(handlers.callbacks.by_team, F.data.startswith("by_team"))
 dp.callback_query.register(handlers.callbacks.create_transfer, F.data == "create_transfer")
+dp.callback_query.register(handlers.callbacks.tek_transfers, F.data == "tek_transfers")
+dp.callback_query.register(handlers.callbacks.finished_transfers, F.data == "my_transfers")
 dp.callback_query.register(handlers.callbacks.add_card, F.data == "add_card")
 
 dp.callback_query.register(handlers.callbacks.sort_rank, F.data.startswith("rank_"))
@@ -34,6 +36,9 @@ dp.callback_query.register(handlers.callbacks.accept_transfer, F.data.startswith
 dp.callback_query.register(handlers.callbacks.decline_transfer, F.data.startswith("decline_transfer"))
 dp.callback_query.register(handlers.callbacks.last_accept, F.data.startswith("last_accept"))
 dp.callback_query.register(handlers.callbacks.last_decline, F.data.startswith("last_decline"))
+dp.callback_query.register(handlers.callbacks.tek_next, F.data == "tek_next")
+dp.callback_query.register(handlers.callbacks.tek_prev, F.data == "tek_prev")
+dp.callback_query.register(handlers.callbacks.tek_decline, F.data == "tek_decline")
 
 dp.message.register(get_question, Quiz.QUESTION)
 dp.message.register(get_first, Quiz.FIRST_V)
@@ -43,6 +48,8 @@ dp.message.register(get_fourth, Quiz.FOURTH_V)
 dp.message.register(get_correct, Quiz.CORRECT)
 
 dp.message.register(get_answer, GetAnswer.ANSWER)
+
+dp.message.register(get_card_photo, AddCard.PHOTO)
 
 dp.message.register(get_nickname, Search.NICKNAME)
 dp.message.register(get_nickname_trans, Search.NICKNAME_TRANS)

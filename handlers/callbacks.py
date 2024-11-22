@@ -3,7 +3,8 @@ from idlelib.pyparse import trans
 from aiogram import types
 import sqlite3
 
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, \
+    InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 from pyexpat.errors import messages
 
@@ -69,7 +70,7 @@ async def random(callback: types.CallbackQuery):
             case 5:
                 form = "попыток"
 
-        await callback.message.answer(f"Вы полчаете {data.dice.value} {form}")
+        await callback.message.answer(f"Ты получаешь {data.dice.value} {form} 🎉!!!")
 
         chances = cursor.execute(f"SELECT chances FROM users WHERE id='{callback.from_user.id}'").fetchone()[0]
         cursor.execute(f"UPDATE users SET chances='{chances + data.dice.value}' WHERE id={callback.from_user.id}")
@@ -78,7 +79,7 @@ async def random(callback: types.CallbackQuery):
     else:
         remains = str(datetime.timedelta(5) - (today - click_date)).split(", ")
         days, timee = remains[0].split()[0], remains[1].split(":")
-        await callback.message.answer(f"До следующей попытки осталось {days} дн. {timee[0]} ч. {timee[1]} мин.")
+        await callback.message.answer(f"⏳ К сожалению, не прошло достаточно времени! Ты сможешь снова сыграть в игру через {days} дн. {timee[0]} ч. {timee[1]} мин.")
         cursor.close()
 
 # Заброс в кольцо
@@ -100,16 +101,16 @@ async def lucky_shot(callback: types.CallbackQuery):
         data = await bot.send_dice(callback.message.chat.id, emoji='🏀')
         time.sleep(4.5)
         if data.dice.value < 4:
-            await callback.message.answer(f'Вы не получаете попытку. Попробуйте завтра')
+            await callback.message.answer(f'🚫 Ты промахнулся, приходи в следующий раз.')
         else:
-            await callback.message.answer(f'Поздравляю, вы получаете 1 дополнительную попытку')
+            await callback.message.answer(f'💥 Есть попадание! Ты получаешь дополнительную попытку.')
             chances = cursor.execute(f"SELECT chances FROM users WHERE id='{callback.from_user.id}'").fetchone()[0]
             cursor.execute(f"UPDATE users SET chances='{chances + 1}' WHERE id={callback.from_user.id}")
             conn.commit()
             cursor.close()
     else:
         remains = str(datetime.timedelta(1) - (today - click_date)).split(":")
-        await callback.message.answer(f"До следующей попытки осталось {remains[0]} ч. {remains[1]} мин.")
+        await callback.message.answer(f"⏳ К сожалению, не прошло достаточно времени! Ты сможешь снова сыграть в игру через {remains[0]} ч. {remains[1]} мин.")
         cursor.close()
 
 # Квиз
@@ -624,7 +625,7 @@ async def add_card(callback: types.CallbackQuery, state: FSMContext):
     is_answer = cursor.execute(f"SELECT status FROM transfers WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()
     if not is_answer:
         cursor.close()
-        await callback.message.answer("📝 Карта выбрана, укажи айди игрока, с которым ты бы хотел совершить обмен")
+        await callback.message.answer("📝 Карта выбрана, укажи ID игрока, с которым ты бы хотел совершить обмен")
         await state.set_state(TransferID.ID)
     else:
         id = cursor.execute(f"SELECT user_id_1 FROM transfers WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()[0]
@@ -694,8 +695,8 @@ async def decline_transfer(callback: types.CallbackQuery):
     conn.commit()
     cursor.execute(f"UPDATE transfers SET status='decline' WHERE user_id_2='{callback.from_user.id}' AND user_id_1='{user_id}' AND card_id_1='{card_id}' AND status='active'")
     conn.commit()
-    await callback.message.answer(f"❌ Ты отклонил запрос на обмен от игрока c айди {user_id}")
-    await bot.send_message(chat_id=int(user_id), text=f"❌ Игрок c айди {callback.from_user.id} отклонил твой запрос на обмен")
+    await callback.message.answer(f"❌ Ты отклонил запрос на обмен от игрока c ID {user_id}")
+    await bot.send_message(chat_id=int(user_id), text=f"❌ Игрок c ID {callback.from_user.id} отклонил твой запрос на обмен")
     cursor.close()
 
 
@@ -708,7 +709,7 @@ async def last_accept(callback: types.CallbackQuery):
     conn.commit()
     cursor.execute(f"INSERT INTO collections (user_id, card_id) VALUES ('{user_id_2}', '{card_id_1}')")
     conn.commit()
-    cursor.execute(f"UPDATE transfers SET status='finshed' WHERE user_id_2='{user_id_2}' AND user_id_1='{callback.from_user.id}' AND card_id_2='{card_id_2}' AND status='answer'")
+    cursor.execute(f"UPDATE transfers SET status='finished' WHERE user_id_2='{user_id_2}' AND user_id_1='{callback.from_user.id}' AND card_id_2='{card_id_2}' AND status='answer'")
     conn.commit()
     cursor.close()
     await bot.send_message(chat_id=int(user_id_2), text=f"🎉 Поздравляем тебя с успешным обменом с игроком {callback.from_user.id}! Наслаждайся своей новой картой!", parse_mode="HTML")
@@ -726,10 +727,179 @@ async def last_decline(callback: types.CallbackQuery):
     conn.commit()
     cursor.execute(f"UPDATE transfers SET status='decline' WHERE user_id_2='{user_id_2}' AND user_id_1='{callback.from_user.id}' AND card_id_1='{card_id_1}' AND card_id_2='{card_id_2}' AND status='answer'")
     conn.commit()
-    await callback.message.answer(f"❌ Ты отклонил запрос на обмен от игрока c айди {user_id_2}")
-    await bot.send_message(chat_id=int(user_id_2), text=f"❌ Игрок c айди {callback.from_user.id} отклонил твое предложение на обмен")
+    await callback.message.answer(f"❌ Ты отклонил запрос на обмен от игрока c ID {user_id_2}")
+    await bot.send_message(chat_id=int(user_id_2), text=f"❌ Игрок c ID {callback.from_user.id} отклонил твое предложение на обмен")
     cursor.close()
 
-# async def tek_transfers(callback: types.CallbackQuery):
+async def tek_transfers(callback: types.CallbackQuery):
+    # TODO
+    conn = sqlite3.connect('./database.db')
+    cursor = conn.cursor()
+    has_transfer = cursor.execute(f"SELECT * FROM transfers WHERE user_id_1='{callback.from_user.id}' AND status='active'").fetchone()
+
+    if has_transfer:
+        await callback.message.answer("🔜 Здесь ты можешь посмотреть свои текущие обмены!")
+        tek_transfer_ikb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⬅️",
+                    callback_data=f"tek_prev"
+                ), InlineKeyboardButton(
+                    text="➡️",
+                    callback_data=f"tek_next"
+                )],
+            [InlineKeyboardButton(
+                text="❌ Отменить",
+                callback_data=f"tek_decline"
+            )]
+        ], resize_keyboard=True)
+        cursor.execute(f"UPDATE indexes SET card_transfer_index='0' WHERE user_id={callback.from_user.id}")
+        conn.commit()
+        card = utils.Card(cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{has_transfer[2]}'").fetchone())
+        cursor.close()
+
+        text = f"""<b>ОБМЕН C ИГРОКОМ <code>{has_transfer[1]}</code></b>
+        
+🔤 Никнейм: <b>{card.name}</b> 
+
+🕹 Команда: <b>{card.team}</b>
+
+🎖 Звание: <b>{card.rank}</b>
+
+🔢 Очки: <b>{card.score}</b>"""
+
+        photo = FSInputFile(path=f"./cards/{card.id}.webp")
+
+        await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=tek_transfer_ikb)
 
 
+    else:
+        await callback.message.answer(f"🗿 У тебя нет текущих обменов")
+        cursor.close()
+
+async def tek_next(callback: types.CallbackQuery):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    transfer_card_ids = cursor.execute(f"SELECT card_id_1, user_id_2 FROM transfers WHERE user_id_1='{callback.from_user.id}' AND status='active'").fetchall()
+    card_index = cursor.execute(f"SELECT card_transfer_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+    if card_index + 1 < len(transfer_card_ids):
+        cursor.execute(f"UPDATE indexes SET card_transfer_index=card_transfer_index+1 WHERE user_id='{callback.from_user.id}'")
+        conn.commit()
+        card_index += 1
+        tek_transfer_ikb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⬅️",
+                    callback_data=f"tek_prev"
+                ), InlineKeyboardButton(
+                text="➡️",
+                callback_data=f"tek_next"
+            )],
+            [InlineKeyboardButton(
+                text="❌ Отменить",
+                callback_data=f"tek_decline"
+            )]
+        ], resize_keyboard=True)
+        card = utils.Card(cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{transfer_card_ids[card_index][0]}'").fetchone())
+        cursor.close()
+
+        text = f"""<b>ОБМЕН C ИГРОКОМ <code>{transfer_card_ids[card_index][1]}</code></b>
+
+🔤 Никнейм: <b>{card.name}</b> 
+
+🕹 Команда: <b>{card.team}</b>
+
+🎖 Звание: <b>{card.rank}</b>
+
+🔢 Очки: <b>{card.score}</b>"""
+
+        photo = FSInputFile(path=f"./cards/{card.id}.webp")
+
+        await callback.message.edit_media(InputMediaPhoto(media=photo, caption=text), parse_mode="HTML", reply_markup=tek_transfer_ikb)
+    else:
+        cursor.close()
+        await callback.answer("Это последний обмен, ожидающий встречного предложения.")
+
+async def tek_prev(callback: types.CallbackQuery):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    transfer_card_ids = cursor.execute(f"SELECT card_id_1, user_id_2 FROM transfers WHERE user_id_1='{callback.from_user.id}' AND status='active'").fetchall()
+    card_index = cursor.execute(f"SELECT card_transfer_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+    if card_index - 1 >= 0:
+        cursor.execute(f"UPDATE indexes SET card_transfer_index=card_transfer_index-1 WHERE user_id='{callback.from_user.id}'")
+        conn.commit()
+        card_index -= 1
+        tek_transfer_ikb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⬅️",
+                    callback_data=f"tek_prev"
+                ), InlineKeyboardButton(
+                text="➡️",
+                callback_data=f"tek_next"
+            )],
+            [InlineKeyboardButton(
+                text="❌ Отменить",
+                callback_data=f"tek_decline"
+            )]
+        ], resize_keyboard=True)
+        card = utils.Card(cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{transfer_card_ids[card_index][0]}'").fetchone())
+        cursor.close()
+
+        text = f"""<b>ОБМЕН C ИГРОКОМ <code>{transfer_card_ids[card_index][1]}</code></b>
+
+🔤 Никнейм: <b>{card.name}</b> 
+
+🕹 Команда: <b>{card.team}</b>
+
+🎖 Звание: <b>{card.rank}</b>
+
+🔢 Очки: <b>{card.score}</b>"""
+
+        photo = FSInputFile(path=f"./cards/{card.id}.webp")
+
+        await callback.message.edit_media(InputMediaPhoto(media=photo, caption=text), parse_mode="HTML", reply_markup=tek_transfer_ikb)
+    else:
+        cursor.close()
+        await callback.answer("Это первый обмен, ожидающий встречного предложения.")
+
+
+async def tek_decline(callback: types.CallbackQuery):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    user_id = callback.message.caption.split()[3]
+    try:
+        id = cursor.execute(f"SELECT card_id_1 FROM transfers WHERE user_id_1='{callback.from_user.id}' AND user_id_2='{user_id}' AND status='active'").fetchone()[0]
+        cursor.execute(f"UPDATE transfers SET status='decline' WHERE user_id_1='{callback.from_user.id}' AND user_id_2='{user_id}' AND status='active'").fetchone()
+        conn.commit()
+        cursor.execute(f"INSERT INTO collections ('user_id', 'card_id') VALUES ('{callback.from_user.id}', '{id}')")
+        conn.commit()
+        cursor.close()
+        await callback.message.delete()
+        await callback.message.answer(f"🗑 Обмен с игроком {user_id} успешно отменен")
+    except Exception as e:
+        print(e)
+        await callback.answer(f"Что-то пошло не так")
+
+
+async def finished_transfers(callback: types.CallbackQuery):
+    conn = sqlite3.connect('./database.db')
+    cursor = conn.cursor()
+    has_transfer = cursor.execute(f"SELECT * FROM transfers WHERE user_id_1='{callback.from_user.id}' AND status='finished'").fetchone()
+
+    if has_transfer:
+        text = "🆗 Здесь ты можешь посмотреть свои завершенные обмены."
+        all_transfers = cursor.execute(f"SELECT user_id_2, card_id_1, card_id_2 FROM transfers WHERE user_id_1='{callback.from_user.id}' AND status='finished'").fetchall()
+        data_1 = [cursor.execute(f"SELECT player, rank FROM cards WHERE id='{i[1]}'").fetchone() for i in all_transfers]
+        data_2 = [cursor.execute(f"SELECT player, rank FROM cards WHERE id='{i[2]}'").fetchone() for i in all_transfers]
+        for i in range(len(all_transfers)):
+            text += f"\n\n{i + 1}. Ты получил <b>{data_2[i][0]} | {data_2[i][1]}</b> от игрока с ID <b><code>{all_transfers[i][0]}</code></b> в обмен на <b>{data_1[i][0]} | {data_1[i][1]}</b>"
+
+        await callback.message.answer(text)
+        cursor.close()
+
+    else:
+        await callback.message.answer(f"🗿 Ты еще не совершил ни одного обмена.")
+
+async def donate(callback: types.CallbackQuery):
+    await callback.message.answer('🌐 Выбери из списка необходимое количество внутриигровой валюты:')

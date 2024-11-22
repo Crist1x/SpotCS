@@ -192,12 +192,9 @@ async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types
                 try:
                     await callback.message.edit_media(InputMediaPhoto(media=photo, caption=text), parse_mode="HTML", reply_markup=collection_ikb)
                 except Exception as e:
-                    if is_transfer:
-                        print(e)
-                        await callback.answer("")
-                    else:
-                        print(e)
-                        await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
+                    print(e)
+                    await callback.answer("")
+
             else:
                 await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
 

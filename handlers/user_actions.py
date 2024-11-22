@@ -11,14 +11,14 @@ from aiogram import F
 
 from handlers import callbacks
 from data import utils
-from keyboards.general import channel_ikb, mini_games_ikb, collection_ikb, transfer_ikb
+from keyboards.general import channel_ikb, mini_games_ikb, collection_ikb, transfer_ikb, market_ikb
 
 router = Router()
 scheduler = AsyncIOScheduler()
 card_counter = 0
 
 
-@router.message(F.text == "Получить карту")
+@router.message(F.text == "🃏 Получить карту")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
         conn = sqlite3.connect('database.db')
@@ -71,7 +71,7 @@ async def get_card(message: Message):
                              reply_markup=channel_ikb, parse_mode="HTML")
 
 
-@router.message(F.text == "Моя коллекция")
+@router.message(F.text == "🗂 Моя коллекция")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
         await message.answer("🗃 Здесь ты можешь посмотреть свою коллекцию карт. Воспользуйся кнопками для удобной навигации по этому разделу.")
@@ -101,7 +101,7 @@ async def get_card(message: Message):
                              reply_markup=channel_ikb, parse_mode="HTML")
 
 
-@router.message(F.text == "Обмен")
+@router.message(F.text == "↔️ Обмен")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
         await message.answer(f"🔄 <b>Твой ID: <code>{message.from_user.id}</code></b>. Здесь ты можешь создавать и управлять своими обменами, а также смотреть историю успешных обменов. Выбери действие из кнопок ниже:", reply_markup=transfer_ikb, parse_mode="HTML")
@@ -111,20 +111,20 @@ async def get_card(message: Message):
                              reply_markup=channel_ikb, parse_mode="HTML")
 
 
-@router.message(F.text == "Мини-игры")
+@router.message(F.text == "🎰 Мини-игры")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
-        await message.answer("Выберите мини-игру", reply_markup=mini_games_ikb)
+        await message.answer("Здесь ты можешь сыграть в интересные мини-игры🏓, в случае победы ты получишь ценные награды🔥 Выбери мини-игру из списка ниже:", reply_markup=mini_games_ikb)
     else:
         await message.delete()
         await message.answer('<b>Для продолжения игры необходимо подписать на наш канал</b>✅',
                              reply_markup=channel_ikb, parse_mode="HTML")
 
 
-@router.message(F.text == "Донат")
+@router.message(F.text == "🛒 Магазин")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
-        await message.answer("В разработке")
+        await message.answer("💸 Здесь ты можешь приобрести внутриигровую валюту и обменять ее на попытки открытия карт или участия в мини-играх. Выбери действие из кнопок ниже: ", reply_markup=market_ikb)
     else:
         await message.delete()
         await message.answer('<b>Для продолжения игры необходимо подписать на наш канал</b>✅',
