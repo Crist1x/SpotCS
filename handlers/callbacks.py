@@ -19,7 +19,8 @@ import time
 
 from handlers.admin_actions import add_card
 from keyboards.admin import cansel_kb, admin_menu_kb
-from keyboards.general import channel_ikb, main_menu_kb, ranks_ikb, ranks_ikb_trans
+from keyboards.general import channel_ikb, main_menu_kb, ranks_ikb, ranks_ikb_trans, want_currency_ikb, purchases_ikb, \
+    buy_open_card_ikb, buy_random_ikb, buy_lucky_shot_ikb
 
 
 # Вход в игру
@@ -32,8 +33,8 @@ async def in_game(callback: types.CallbackQuery):
         cursor = conn.cursor()
         is_exist = cursor.execute(f"SELECT id FROM users WHERE id={callback.from_user.id}").fetchone()
         if not is_exist:
-            cursor.execute(f"INSERT INTO users (id, card_time, random_time, luckyshot_time, clutch_time, quiz_done, season_score, "
-                           f"full_score, chances, status) VALUES ('{callback.from_user.id}', '', '', '', '', '', '', '', 6, 'active');")
+            cursor.execute(f"INSERT INTO users (id, card_time, random_time, random_chance, luckyshot_time, luckyshot_chance, quiz_done, season_score, "
+                           f"full_score, chances, status, credits) VALUES ('{callback.from_user.id}', '', '', '', '', '', '', '', '', '', 6, 'active', '0');")
             cursor.execute(f"INSERT INTO indexes (user_id)"
                            f" VALUES ('{callback.from_user.id}');")
         conn.commit()
@@ -619,7 +620,7 @@ async def create_transfer(callback: types.CallbackQuery):
         await callback.message.answer("Кажется, в твоей коллекции нет карт ❌")
 
 
-async def add_card(callback: types.CallbackQuery, state: FSMContext):
+async def add_card1(callback: types.CallbackQuery, state: FSMContext):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     is_answer = cursor.execute(f"SELECT status FROM transfers WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()
@@ -631,11 +632,11 @@ async def add_card(callback: types.CallbackQuery, state: FSMContext):
         id = cursor.execute(f"SELECT user_id_1 FROM transfers WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()[0]
         # Вторая карта
         card_id = cursor.execute(f"SELECT card_transfer_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
-        print(card_id)
-        cursor.execute(f"UPDATE transfers SET card_id_2='{card_id}' WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()
 
+        cursor.execute(f"UPDATE transfers SET card_id_2='{card_id}' WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()
+        conn.commit()
         card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{card_id}'").fetchone()
-        print(card_info)
+
         transfer_card = utils.Card(card_info)
 
         text = f"""🔤 Никнейм: <b>{transfer_card.name}</b> 
@@ -885,15 +886,19 @@ async def tek_decline(callback: types.CallbackQuery):
 async def finished_transfers(callback: types.CallbackQuery):
     conn = sqlite3.connect('./database.db')
     cursor = conn.cursor()
-    has_transfer = cursor.execute(f"SELECT * FROM transfers WHERE user_id_1='{callback.from_user.id}' AND status='finished'").fetchone()
+    has_transfer = cursor.execute(f"SELECT * FROM transfers WHERE (user_id_1='{callback.from_user.id}' OR user_id_2='{callback.from_user.id}') AND status='finished'").fetchone()
 
     if has_transfer:
         text = "🆗 Здесь ты можешь посмотреть свои завершенные обмены."
-        all_transfers = cursor.execute(f"SELECT user_id_2, card_id_1, card_id_2 FROM transfers WHERE user_id_1='{callback.from_user.id}' AND status='finished'").fetchall()
-        data_1 = [cursor.execute(f"SELECT player, rank FROM cards WHERE id='{i[1]}'").fetchone() for i in all_transfers]
-        data_2 = [cursor.execute(f"SELECT player, rank FROM cards WHERE id='{i[2]}'").fetchone() for i in all_transfers]
+        all_transfers = cursor.execute(f"SELECT user_id_1, user_id_2, card_id_1, card_id_2 FROM transfers WHERE (user_id_1='{callback.from_user.id}' OR user_id_2='{callback.from_user.id}') AND status='finished'").fetchall()
+        data_1 = [cursor.execute(f"SELECT player, rank FROM cards WHERE id='{i[2]}'").fetchone() for i in all_transfers]
+        data_2 = [cursor.execute(f"SELECT player, rank FROM cards WHERE id='{i[3]}'").fetchone() for i in all_transfers]
+
         for i in range(len(all_transfers)):
-            text += f"\n\n{i + 1}. Ты получил <b>{data_2[i][0]} | {data_2[i][1]}</b> от игрока с ID <b><code>{all_transfers[i][0]}</code></b> в обмен на <b>{data_1[i][0]} | {data_1[i][1]}</b>"
+            if all_transfers[i][0] == callback.from_user.id:
+                text += f"\n\n{i + 1}. Ты получил <b>{data_2[i][0]} | {data_2[i][1]}</b> от игрока с ID <b><code>{all_transfers[i][1]}</code></b> в обмен на <b>{data_1[i][0]} | {data_1[i][1]}</b>"
+            if all_transfers[i][1] == callback.from_user.id:
+                text += f"\n\n{i + 1}. Ты получил <b>{data_1[i][0]} | {data_1[i][1]}</b> от игрока с ID <b><code>{all_transfers[i][0]}</code></b> в обмен на <b>{data_2[i][0]} | {data_2[i][1]}</b>"
 
         await callback.message.answer(text)
         cursor.close()
@@ -902,4 +907,70 @@ async def finished_transfers(callback: types.CallbackQuery):
         await callback.message.answer(f"🗿 Ты еще не совершил ни одного обмена.")
 
 async def donate(callback: types.CallbackQuery):
-    await callback.message.answer('🌐 Выбери из списка необходимое количество внутриигровой валюты:')
+    await callback.message.delete()
+    await callback.message.answer('🌐 Выбери из списка необходимое количество внутриигровой валюты:', reply_markup=want_currency_ikb)
+
+async def want_currency(callback: types.CallbackQuery):
+    await callback.message.answer(f"🧑‍💻 Напиши нашему админу свой ID ( <code>{callback.from_user.id}</code> ) для пополнения валюты. Он ответит тебе в ближайшее время!", parse_mode="HTML")
+
+async def purchases(callback: types.CallbackQuery):
+    await callback.message.delete()
+    await callback.message.answer('🌐 Выбери из списка, где ты хочешь получить дополнительную попытку:', reply_markup=purchases_ikb)
+
+async def buy_open_card(callback: types.CallbackQuery):
+    await callback.message.delete()
+    await callback.message.answer("📩 Выбери количество попыток:\n\n<b>• 5 попыток - 15 🔫\n\n• 10 попыток - 25 🔫\n\n• 20 попыток - 45 🔫\n\n• 50 попыток - 100 🔫</b>", parse_mode="HTML", reply_markup=buy_open_card_ikb)
+
+async def buy_random(callback: types.CallbackQuery):
+    await callback.message.delete()
+    await callback.message.answer("📩 Выбери количество попыток:\n\n<b>• 1 попытка - 6 🔫\n\n• 3 попытки - 15 🔫\n\n• 5 попыток - 20 🔫\n\n• 10 попыток - 30 🔫</b>", reply_markup=buy_random_ikb)
+
+async def buy_lucky_shot(callback: types.CallbackQuery):
+    await callback.message.delete()
+    await callback.message.answer("📩 Выбери количество попыток:\n\n<b>• 10 попыток - 20 🔫\n\n• 20 попыток - 30 🔫\n\n• 50 попыток - 65 🔫\n\n• 100 попыток - 120 🔫</b>", reply_markup=buy_lucky_shot_ikb)
+
+async def confirm_buy(callback: types.CallbackQuery):
+    data = callback.data.split("_")
+    typ, chances, price = data[1], data[2], data[3]
+    conn = sqlite3.connect('./database.db')
+    cursor = conn.cursor()
+    balance = cursor.execute(f"SELECT credits FROM users WHERE id='{callback.from_user.id}'").fetchone()[0]
+    if int(balance) >= int(price):
+        match typ:
+            case "card":
+                form = "открытии карты"
+            case "random":
+                form = "рандоме"
+            case "shot":
+                form = "лаки шоте"
+
+        conf = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Подтвердить",callback_data=f"buy_conf_{typ}_{chances}_{price}")],
+            [InlineKeyboardButton(text="❌ Отменить",callback_data="buy_cansel")]
+        ], resize_keyboard=True)
+
+        await callback.message.answer(f"🤝 Подтверди покупку: <b>{chances}</b> попыток в <b>{form}</b> за <b>{price}</b> 🔫.", parse_mode="HTML", reply_markup=conf)
+    else:
+        await callback.message.delete()
+        await callback.message.answer("<b>На балансе не хватает валюты✖️</b>", parse_mode="HTML")
+
+async def buy_conf(callback: types.CallbackQuery):
+    await callback.message.delete()
+    data = callback.data.split("_")
+    typ, chances, price = data[2], data[3], data[4]
+    conn = sqlite3.connect('./database.db')
+    cursor = conn.cursor()
+    match typ:
+        case "card":
+            cursor.execute(f"UPDATE users SET credits=credits-'{price}',  chances=chances+'{chances}' WHERE id='{callback.from_user.id}'")
+        case "random":
+            cursor.execute(f"UPDATE users SET credits=credits-'{price}',  random_chance=random_chance+'{chances}' WHERE id='{callback.from_user.id}'")
+        case "shot":
+            cursor.execute(f"UPDATE users SET credits=credits-'{price}',  luckyshot_chance=luckyshot_chance+'{chances}' WHERE id='{callback.from_user.id}'")
+    conn.commit()
+    cursor.close()
+    await callback.message.answer("Покупка прошла успешно 🎉")
+
+async def buy_cansel(callback: types.CallbackQuery):
+    await callback.message.delete()
+    await callback.message.answer("Покупка отменена ✖️")

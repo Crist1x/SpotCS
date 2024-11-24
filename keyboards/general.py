@@ -164,6 +164,39 @@ market_ikb = InlineKeyboardMarkup(inline_keyboard=[
             callback_data="donate"
     )], [InlineKeyboardButton(
             text="🛍 Покупки",
-            callback_data="buy"
+            callback_data="purchases"
     )]
+], resize_keyboard=True)
+
+want_currency_ikb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="15 🔫", callback_data="want_currency"), InlineKeyboardButton(text="30 🔫", callback_data="want_currency")],
+    [InlineKeyboardButton(text="60 🔫", callback_data="want_currency"), InlineKeyboardButton(text="100 🔫", callback_data="want_currency")],
+    [InlineKeyboardButton(text="200 🔫", callback_data="want_currency"), InlineKeyboardButton(text="500 🔫", callback_data="want_currency")]
+], resize_keyboard=True)
+
+purchases_ikb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="🃏 Открытие карты", callback_data="buy_open_card")],
+    [InlineKeyboardButton(text="🎲 Рандом", callback_data="buy_random")],
+    [InlineKeyboardButton(text="🎯 Лаки Шот", callback_data="buy_lucky_shot")]
+], resize_keyboard=True)
+
+buy_open_card_ikb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="5 попыток", callback_data="confirm_card_5_15")],
+    [InlineKeyboardButton(text="10 попыток", callback_data="confirm_card_10_25")],
+    [InlineKeyboardButton(text="20 попыток", callback_data="confirm_card_20_45")],
+    [InlineKeyboardButton(text="50 попыток", callback_data="confirm_card_50_100")]
+], resize_keyboard=True)
+
+buy_random_ikb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="1 попытка", callback_data="confirm_random_1_6")],
+    [InlineKeyboardButton(text="3 попытки", callback_data="confirm_random_3_15")],
+    [InlineKeyboardButton(text="5 попыток", callback_data="confirm_random_5_20")],
+    [InlineKeyboardButton(text="10 попыток", callback_data="confirm_random_10_30")]
+], resize_keyboard=True)
+
+buy_lucky_shot_ikb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="10 попыток", callback_data="confirm_shot_10_20")],
+    [InlineKeyboardButton(text="20 попыток", callback_data="confirm_shot_20_30")],
+    [InlineKeyboardButton(text="50 попыток", callback_data="confirm_shot_50_65")],
+    [InlineKeyboardButton(text="100 попыток", callback_data="confirm_shot_100_120")]
 ], resize_keyboard=True)

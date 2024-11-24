@@ -8,11 +8,10 @@ from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, FSInputFile, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton
 
-import handlers.callbacks
 from data import utils
 from data.utils import draw_card
 from dispatcher import bot
-from keyboards.admin import admin_menu_kb, confirm_quiz
+from keyboards.admin import admin_menu_kb, confirm_quiz, currency_ikb
 from keyboards.general import main_menu_kb
 from os import listdir
 
@@ -274,15 +273,17 @@ async def get_card_photo(message: Message, state: FSMContext):
     await state.update_data(photo=message.text)
     data = await state.get_data()
     try:
-        files = [int(f.split(".")[0]) for f in listdir("./cards/")]
-        await message.bot.download(file=message.photo[-1].file_id, destination="./cards/100.webp")
-    except Exception as e:
         if data["photo"] != "Отмена":
+            files = [int(f.split(".")[0]) for f in listdir("./cards/")]
+            await state.update_data(id=max(files) + 1)
+            await message.bot.download(file=message.photo[-1].file_id, destination=f"./cards/{max(files) + 1}.webp")
             await message.answer("Напиши ник игрока: ")
             await state.set_state(AddCard.NICKNAME)
         else:
             await message.answer("Вы вернулись в меню", reply_markup=admin_menu_kb)
             await state.clear()
+    except Exception as e:
+        await message.answer(f"Не удалось добавить карту: {e}", reply_markup=admin_menu_kb)
 
 async def get_card_nickname(message: Message, state: FSMContext):
     await state.update_data(nickname=message.text)
@@ -308,4 +309,74 @@ async def get_card_rank(message: Message, state: FSMContext):
     await state.update_data(rank=message.text)
     data = await state.get_data()
     await state.clear()
-    print(data)
+    if data["rank"] != "Отмена":
+        match data["rank"].lower():
+            case "сильвер":
+                score = 500
+            case "звезда":
+                score = 1000
+            case "калаш":
+                score = 1500
+            case "калаш с венками":
+                score = 2000
+            case "два калаша":
+                score = 2500
+            case "биг стар":
+                score = 3000
+            case "беркут":
+                score = 3500
+            case "лем":
+                score = 4000
+            case "суприм":
+                score = 4500
+            case "глобал":
+                score = 5000
+
+        conn = sqlite3.connect('./database.db')
+        cursor = conn.cursor()
+        cursor.execute(f"INSERT INTO cards ('id', 'player', 'team', 'rank', 'amount', 'score') VALUES ('{data['id']}', '{data['nickname']}', '{data['team']}', '{data['rank']}', 50, '{score}')")
+        conn.commit()
+        cursor.close()
+        await message.answer("Карта успешно добавлена", reply_markup=admin_menu_kb)
+    else:
+        await message.answer("Вы вернулись в меню", reply_markup=admin_menu_kb)
+
+class TransferCur(StatesGroup):
+    ID = State()
+    AMOUNT = State()
+
+async def get_trancfer_cur_id(message: Message, state: FSMContext):
+    await state.update_data(id=message.text)
+    data = await state.get_data()
+    if data["id"] != "Отмена":
+        conn = sqlite3.connect('./database.db')
+        cursor = conn.cursor()
+        is_exist = cursor.execute(f"SELECT status FROM users WHERE id='{data['id']}'").fetchone()
+        cursor.close()
+        if is_exist:
+            await message.answer("Выбери количество валюты, начисляемое пользователю ", reply_markup=currency_ikb)
+            await state.set_state(TransferCur.AMOUNT)
+        else:
+            await message.answer("Нельзя перевести валюту данному пользователю, так как указан некорректный ID", reply_markup=admin_menu_kb)
+            await state.clear()
+    else:
+        await message.answer("Вы вернулись в меню", reply_markup=admin_menu_kb)
+        await state.clear()
+
+async def add_currency(callback: types.CallbackQuery, state: FSMContext):
+    await state.update_data(amount=callback.data.split("_")[-1])
+    data = await state.get_data()
+    await state.clear()
+
+    try:
+        conn = sqlite3.connect('./database.db')
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE users SET credits='{int(data['amount'])}' WHERE id='{data['id']}'").fetchone()
+        conn.commit()
+        cursor.close()
+        await callback.message.answer(f"<b>{data['amount']} валюты успешно начислено пользователю {data['id']}</b> 🎉", parse_mode="HTML", reply_markup=admin_menu_kb)
+    except Exception as e:
+        print(e)
+        await callback.message.answer(f"Не удалось начислить валюту. Попробуйте еще раз", reply_markup=admin_menu_kb)
+
+
