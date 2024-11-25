@@ -2,6 +2,7 @@ import sqlite3
 from cgitb import handler
 from idlelib.pyparse import trans
 from logging import exception
+from xml.sax import parse
 
 from aiogram import types, Bot
 from aiogram.filters.state import State, StatesGroup
@@ -109,12 +110,12 @@ async def get_answer(message: Message, state: FSMContext):
         cursor.execute(f"UPDATE users SET quiz_done='done' WHERE id={message.from_user.id}")
 
         if answers.index(data["answer"]) == correct - 1:
-            await message.answer("Правильный ответ! Вы получаете 1 дополнительную попытку", reply_markup=main_menu_kb)
+            await message.answer("✅ Поздравляем, ты дал верный ответ! Ты получаешь дополнительную попытку.", reply_markup=main_menu_kb)
             cursor.execute(f"UPDATE users SET chances = chances + 1 WHERE id={message.from_user.id}")
             conn.commit()
             cursor.close()
         else:
-            await message.answer(f"<b>Вы ошиблись</b>\n\nПравильный ответ: {answers[correct-1]}", reply_markup=main_menu_kb)
+            await message.answer(f"<b>❌ К сожалению, ответ неверный.</b>\n\nПравильный ответ: {answers[correct-1]}", reply_markup=main_menu_kb, parse_mode="HTML")
             conn.commit()
             cursor.close()
 
@@ -129,10 +130,7 @@ class Search(StatesGroup):
     NICKNAME_TRANS = State()
 
 
-search_cards = []
-
 async def get_nickname_temp(message: Message, state: FSMContext, is_trans=False):
-    global search_cards
     await state.update_data(nickname=message.text.strip())
     data = await state.get_data()
     nickname = data['nickname']
@@ -141,13 +139,11 @@ async def get_nickname_temp(message: Message, state: FSMContext, is_trans=False)
     conn = sqlite3.connect('./database.db')
     cursor = conn.cursor()
     length = cursor.execute(
-        f"SELECT COUNT(cards.id) FROM cards, collections WHERE cards.id = collections.card_id AND cards.player = '{nickname}' AND collections.user_id='{message.from_user.id}'").fetchone()[
-        0]
+        f"SELECT COUNT(cards.id) FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.player) = '{nickname.lower()}' AND collections.user_id='{message.from_user.id}'").fetchone()[0]
     cards = cursor.execute(
-        f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.player = '{nickname}' AND collections.user_id='{message.from_user.id}'").fetchall()[
-            ::-1]
-    search_cards = cards
-
+        f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.player) = '{nickname.lower()}' AND collections.user_id='{message.from_user.id}'").fetchall()[::-1]
+    cursor.execute(f"UPDATE indexes SET nickname='{nickname}', card_search_index='0' WHERE user_id='{message.from_user.id}'")
+    conn.commit()
     if len(cards) >= 1:
         if len(cards[0]) == 5:
             card = utils.Card(cards[0])
@@ -169,11 +165,9 @@ async def get_nickname_trans(message: Message, state: FSMContext):
 
 class Team(StatesGroup):
     TEAM = State()
+    TEAM_TRANS = State()
 
-team_cards = []
-
-async def get_team(message: Message, state: FSMContext):
-    global team_cards
+async def get_team_temp(message: Message, state: FSMContext, is_trans=False):
     await state.update_data(team=message.text.strip())
     data = await state.get_data()
     team = data['team']
@@ -181,18 +175,27 @@ async def get_team(message: Message, state: FSMContext):
 
     conn = sqlite3.connect('./database.db')
     cursor = conn.cursor()
-    length = cursor.execute(f"SELECT COUNT(cards.id) FROM cards, collections WHERE cards.id = collections.card_id AND cards.team = '{team}' AND collections.user_id='{message.from_user.id}'").fetchone()[0]
-    cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.team = '{team}' AND collections.user_id='{message.from_user.id}'").fetchall()[::-1]
-    team_cards = cards
-
+    length = cursor.execute(f"SELECT COUNT(cards.id) FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.team) = '{team.lower()}' AND collections.user_id='{message.from_user.id}'").fetchone()[0]
+    cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.team) = '{team.lower()}' AND collections.user_id='{message.from_user.id}'").fetchall()[::-1]
+    cursor.execute(f"UPDATE indexes SET team='{team}', card_team_index='0' WHERE user_id='{message.from_user.id}'")
+    conn.commit()
     if len(cards) >= 1:
         if len(cards[0]) == 5:
             card = utils.Card(cards[0])
-            await draw_card(typ="team", tek=1, all=length, card=card, message=message)
+            if is_trans:
+                await draw_card(typ="team", tek=1, all=length, is_transfer=True, card=card, message=message)
+            else:
+                await draw_card(typ="team", tek=1, all=length, card=card, message=message)
         else:
             await message.answer(" ❌ Кажется, в твоей коллекции нет таких карт...")
     else:
         await message.answer(" ❌ Кажется, в твоей коллекции нет таких карт...")
+
+async def get_team(message: Message, state: FSMContext):
+    await get_team_temp(message, state)
+
+async def get_team_trans(message: Message, state: FSMContext):
+    await get_team_temp(message, state, is_trans=True)
 
 
 class TransferID(StatesGroup):
@@ -222,7 +225,7 @@ async def get_transfer_id(message: Message, state: FSMContext):
 
 🔢 Очки: <b>{transfer_card.score}</b>"""
 
-            photo = FSInputFile(path=f"./cards/{transfer_card.id}.webp")
+            photo = FSInputFile(path=f"./cards/{transfer_card.id}.jpg")
             text = f"<b>👀 Игрок {message.from_user.id} отправляет тебе запрос на обмен. Посмотри, что он предлагает:</b>\n\n{text}"
 
             cursor.execute(f"INSERT INTO transfers ('user_id_1', 'user_id_2', 'card_id_1', 'card_id_2', 'status') VALUES ('{message.from_user.id}', '{id}', '{transfer_card.id}', '', 'active')")
@@ -242,7 +245,7 @@ async def get_transfer_id(message: Message, state: FSMContext):
                 )]
             ], resize_keyboard=True)
             await bot.send_photo(chat_id=int(id), photo=photo, caption=text, parse_mode="HTML", reply_markup=accept_transfer_ikb)
-            await message.answer(f"✅ Запрос на обмен игроку {id} отправлен")
+            await message.answer(f"✅ Запрос на обмен игроку <b>{id}</b> отправлен", parse_mode="HTML")
             cursor.close()
         except Exception as e:
             print(e)
@@ -276,7 +279,7 @@ async def get_card_photo(message: Message, state: FSMContext):
         if data["photo"] != "Отмена":
             files = [int(f.split(".")[0]) for f in listdir("./cards/")]
             await state.update_data(id=max(files) + 1)
-            await message.bot.download(file=message.photo[-1].file_id, destination=f"./cards/{max(files) + 1}.webp")
+            await message.bot.download(file=message.photo[-1].file_id, destination=f"./cards/{max(files) + 1}.jpg")
             await message.answer("Напиши ник игрока: ")
             await state.set_state(AddCard.NICKNAME)
         else:

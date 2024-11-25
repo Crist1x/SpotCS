@@ -36,6 +36,8 @@ dp.callback_query.register(handlers.callbacks.donate, F.data == "donate")
 dp.callback_query.register(handlers.callbacks.purchases, F.data == "purchases")
 
 dp.callback_query.register(handlers.callbacks.sort_rank, F.data.startswith("rank_"))
+dp.callback_query.register(handlers.callbacks.user_2_accept, F.data == "user_2_accept")
+dp.callback_query.register(handlers.callbacks.user_2_decline, F.data == "user_2_decline")
 dp.callback_query.register(handlers.callbacks.accept_transfer, F.data.startswith("accept_transfer"))
 dp.callback_query.register(handlers.callbacks.decline_transfer, F.data.startswith("decline_transfer"))
 dp.callback_query.register(handlers.callbacks.last_accept, F.data.startswith("last_accept"))
@@ -44,7 +46,6 @@ dp.callback_query.register(handlers.callbacks.tek_next, F.data == "tek_next")
 dp.callback_query.register(handlers.callbacks.tek_prev, F.data == "tek_prev")
 dp.callback_query.register(handlers.callbacks.tek_decline, F.data == "tek_decline")
 dp.callback_query.register(data.forms.add_currency, F.data.startswith("currency"))
-dp.callback_query.register(handlers.callbacks.want_currency, F.data == "want_currency")
 dp.callback_query.register(handlers.callbacks.buy_open_card, F.data == "buy_open_card")
 dp.callback_query.register(handlers.callbacks.buy_random, F.data == "buy_random")
 dp.callback_query.register(handlers.callbacks.buy_lucky_shot, F.data == "buy_lucky_shot")
@@ -69,14 +70,10 @@ dp.message.register(get_card_rank, AddCard.RANK)
 dp.message.register(get_nickname, Search.NICKNAME)
 dp.message.register(get_nickname_trans, Search.NICKNAME_TRANS)
 dp.message.register(get_team, Team.TEAM)
+dp.message.register(get_team_trans, Team.TEAM_TRANS)
 dp.message.register(get_transfer_id, TransferID.ID)
 
 dp.message.register(get_trancfer_cur_id, TransferCur.ID)
-
-@dp.message(Command("help"))
-async def help_func(message: Message):
-    await message.answer(help_text, parse_mode="HTML")
-
 
 @dp.message(CommandStart())
 async def start(message: Message):

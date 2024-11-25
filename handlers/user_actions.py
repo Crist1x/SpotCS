@@ -45,17 +45,18 @@ async def get_card(message: Message):
 
             # Если остались карты
             if len(card_for_user) == 6:
-                cursor.execute(
-                    f"UPDATE cards SET amount = amount - 1 WHERE id='{card_for_user[0]}'")
+                cursor.execute(f"UPDATE cards SET amount = amount - 1 WHERE id='{card_for_user[0]}'")
                 conn.commit()
-                cursor.execute(
-                    f"INSERT INTO collections (user_id, card_id) VALUES ('{message.from_user.id}', '{card_for_user[0]}')")
+                cursor.execute(f"INSERT INTO collections (user_id, card_id) VALUES ('{message.from_user.id}', '{card_for_user[0]}')")
                 conn.commit()
+                cursor.execute(f"UPDATE users SET full_score = full_score + {int(card_for_user[5])}, season_score = season_score + {int(card_for_user[5])} WHERE id='{message.from_user.id}'")
+                conn.commit()
+                score = cursor.execute(f"SELECT season_score FROM users WHERE id='{message.from_user.id}'").fetchone()[0]
                 cursor.close()
                 text = (f"<b>💥 Ты получаешь новую карту!</b>\n\n\n🔤 Никнейм: <b>{card_for_user[1]}</b>\n\n🕹 Команда: "
-                        f"<b>{card_for_user[2]}</b>\n\n🎖 Звание: <b>{card_for_user[3]}</b>\n\n🔢 Очки: <b>{card_for_user[5]}</b>")
+                        f"<b>{card_for_user[2]}</b>\n\n🎖 Звание: <b>{card_for_user[3]}</b>\n\n🔢 Очки: <b>{card_for_user[5]}</b>\n\n🧮 Общее количество очков: <b>{score}</b>")
 
-                photo = FSInputFile(path=f"./cards/{card_for_user[0]}.webp")
+                photo = FSInputFile(path=f"./cards/{card_for_user[0]}.jpg")
                 await message.answer_photo(photo, caption=text, parse_mode="HTML")
             else:
                 await message.answer("Сейчас мы не можем выдать тебе карту из-за непредвиденной ошибки🙅‍♂️. Мы в курсе проблемы и уже исправляем ее 🗿, чтобы как можно быстрее выдать тебе карту!")
@@ -63,7 +64,7 @@ async def get_card(message: Message):
 
         else:
             remains = str(datetime.timedelta(hours=6) - (today - click_date)).split(":")
-            await message.answer(f"К сожалению, не прошло достаточно времени с последнего открытия⏳. Приходи и получай новую карту через {remains[0]} ч : {remains[1]} мин!")
+            await message.answer(f"⏳ К сожалению, не прошло достаточно времени с последнего открытия. Приходи и получай новую карту через <b>{remains[0]} ч : {remains[1]} мин</b>!", parse_mode="HTML")
             cursor.close()
     else:
         await message.delete()
@@ -114,7 +115,7 @@ async def get_card(message: Message):
 @router.message(F.text == "🎰 Мини-игры")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
-        await message.answer("Здесь ты можешь сыграть в интересные мини-игры🏓, в случае победы ты получишь ценные награды🔥 Выбери мини-игру из списка ниже:", reply_markup=mini_games_ikb)
+        await message.answer("🏓 Здесь ты можешь сыграть в интересные мини-игры, в случае победы ты получишь ценные награды. Выбери мини-игру из списка ниже:", reply_markup=mini_games_ikb)
     else:
         await message.delete()
         await message.answer('<b>Для продолжения игры необходимо подписать на наш канал</b>✅',
@@ -124,7 +125,11 @@ async def get_card(message: Message):
 @router.message(F.text == "🛒 Магазин")
 async def get_card(message: Message):
     if await is_subscribed(message.from_user.id) and is_active(message.from_user.id):
-        await message.answer("💸 Здесь ты можешь приобрести внутриигровую валюту и обменять ее на попытки открытия карт или участия в мини-играх. Выбери действие из кнопок ниже: ", reply_markup=market_ikb)
+        conn = sqlite3.connect('./database.db')
+        cursor = conn.cursor()
+        credits = cursor.execute(f"SELECT credits FROM users WHERE id='{message.from_user.id}'").fetchone()[0]
+        cursor.close()
+        await message.answer(f"💸 Здесь ты можешь приобрести внутриигровую валюту и обменять ее на попытки открытия карт или участия в мини-играх.\n\nТекущий баланс: <b>{credits}</b> 🔫\n\nВыбери действие из кнопок ниже: ", reply_markup=market_ikb, parse_mode="HTML")
     else:
         await message.delete()
         await message.answer('<b>Для продолжения игры необходимо подписать на наш канал</b>✅',

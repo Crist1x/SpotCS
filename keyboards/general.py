@@ -168,12 +168,6 @@ market_ikb = InlineKeyboardMarkup(inline_keyboard=[
     )]
 ], resize_keyboard=True)
 
-want_currency_ikb = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="15 🔫", callback_data="want_currency"), InlineKeyboardButton(text="30 🔫", callback_data="want_currency")],
-    [InlineKeyboardButton(text="60 🔫", callback_data="want_currency"), InlineKeyboardButton(text="100 🔫", callback_data="want_currency")],
-    [InlineKeyboardButton(text="200 🔫", callback_data="want_currency"), InlineKeyboardButton(text="500 🔫", callback_data="want_currency")]
-], resize_keyboard=True)
-
 purchases_ikb = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="🃏 Открытие карты", callback_data="buy_open_card")],
     [InlineKeyboardButton(text="🎲 Рандом", callback_data="buy_random")],

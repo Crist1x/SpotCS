@@ -43,21 +43,30 @@ class Card:
         self.score = card_info[4]
 
 
-async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types.CallbackQuery = False, message:Message = False, send=None):
+async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types.CallbackQuery = False, message:Message = False, send=None, usr_id=None):
+    conn = sqlite3.connect('./database.db')
+    cursor = conn.cursor()
+    if message:
+        if usr_id:
+            score = cursor.execute(f"SELECT season_score FROM users WHERE id='{usr_id}'").fetchone()[0]
+        else:
+            score = cursor.execute(f"SELECT season_score FROM users WHERE id='{message.from_user.id}'").fetchone()[0]
+    if callback:
+        score = cursor.execute(f"SELECT season_score FROM users WHERE id='{callback.from_user.id}'").fetchone()[0]
     text = f"""🔤 Никнейм: <b>{card.name}</b> 
     
 🕹 Команда: <b>{card.team}</b>
 
 🎖 Звание: <b>{card.rank}</b>
 
-🔢 Очки: <b>{card.score}</b>"""
+🔢 Очки: <b>{card.score}</b>
 
-    photo = FSInputFile(path=f"./cards/{card.id}.webp")
+🧮 Общее количество очков: <b>{score}</b>"""
+
+    photo = FSInputFile(path=f"./cards/{card.id}.jpg")
 
     if typ == "base":
         if is_transfer:
-            conn = sqlite3.connect('./database.db')
-            cursor = conn.cursor()
             if callback:
                 cursor.execute(f"UPDATE indexes SET card_transfer_index='{card.id}' WHERE user_id='{callback.from_user.id}'")
                 conn.commit()
@@ -126,14 +135,11 @@ async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types
             ], resize_keyboard=True)
     else:
         if is_transfer:
-            conn = sqlite3.connect('./database.db')
-            cursor = conn.cursor()
             if callback:
                 cursor.execute(f"UPDATE indexes SET card_transfer_index='{card.id}' WHERE user_id='{callback.from_user.id}'")
             else:
                 cursor.execute(f"UPDATE indexes SET card_transfer_index='{card.id}' WHERE user_id='{message.from_user.id}'")
             conn.commit()
-            cursor.close()
             collection_ikb = InlineKeyboardMarkup(inline_keyboard=[
                 [
                     InlineKeyboardButton(
@@ -182,6 +188,8 @@ async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types
                 )]
             ], resize_keyboard=True)
 
+    conn.commit()
+    cursor.close()
     if message:
         return await message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
     if callback:
@@ -198,25 +206,22 @@ async def draw_card(typ, tek, all, card: Card, is_transfer=False, callback:types
             else:
                 await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=collection_ikb)
 
-search_cards = []
 
 async def sort_by_rank(rank, callback: types.CallbackQuery, trans=False):
-    global search_cards
     conn = sqlite3.connect('./database.db')
     cursor = conn.cursor()
-    length = cursor.execute(
-        f"SELECT COUNT(cards.id) FROM cards, collections WHERE cards.id = collections.card_id AND cards.rank = '{rank}' AND collections.user_id='{callback.from_user.id}'").fetchone()[
-        0]
-    cards = cursor.execute(
-        f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.rank = '{rank}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
-    search_cards = cards
+    length = cursor.execute(f"SELECT COUNT(cards.id) FROM cards, collections WHERE cards.id = collections.card_id AND cards.rank = '{rank}' AND collections.user_id='{callback.from_user.id}'").fetchone()[0]
+    cursor.execute(f"UPDATE indexes SET rank='{rank}' WHERE user_id='{callback.from_user.id}'")
+    conn.commit()
+    cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.rank = '{rank}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
+    cursor.close()
     if len(cards) >= 1:
         if len(cards[0]) == 5:
             card = Card(cards[0])
             if trans:
-                await draw_card(typ="rank", tek=1, all=length, is_transfer=True, card=card, message=callback.message)
+                await draw_card(typ="rank", tek=1, all=length, is_transfer=True, card=card, message=callback.message, usr_id=callback.from_user.id)
             else:
-                await draw_card(typ="rank", tek=1, all=length, card=card, message=callback.message)
+                await draw_card(typ="rank", tek=1, all=length, card=card, message=callback.message, usr_id=callback.from_user.id)
         else:
             await callback.message.answer(" ❌ Кажется, в твоей коллекции нет таких карт...")
     else:

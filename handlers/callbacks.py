@@ -1,5 +1,3 @@
-from idlelib.pyparse import trans
-
 from aiogram import types
 import sqlite3
 
@@ -19,7 +17,7 @@ import time
 
 from handlers.admin_actions import add_card
 from keyboards.admin import cansel_kb, admin_menu_kb
-from keyboards.general import channel_ikb, main_menu_kb, ranks_ikb, ranks_ikb_trans, want_currency_ikb, purchases_ikb, \
+from keyboards.general import channel_ikb, main_menu_kb, ranks_ikb, ranks_ikb_trans, purchases_ikb, \
     buy_open_card_ikb, buy_random_ikb, buy_lucky_shot_ikb
 
 
@@ -34,7 +32,7 @@ async def in_game(callback: types.CallbackQuery):
         is_exist = cursor.execute(f"SELECT id FROM users WHERE id={callback.from_user.id}").fetchone()
         if not is_exist:
             cursor.execute(f"INSERT INTO users (id, card_time, random_time, random_chance, luckyshot_time, luckyshot_chance, quiz_done, season_score, "
-                           f"full_score, chances, status, credits) VALUES ('{callback.from_user.id}', '', '', '', '', '', '', '', '', '', 6, 'active', '0');")
+                           f"full_score, chances, status, credits) VALUES ('{callback.from_user.id}', '', '', '0', '', '0', '', '0', '0', '0', 6, 'active', '0');")
             cursor.execute(f"INSERT INTO indexes (user_id)"
                            f" VALUES ('{callback.from_user.id}');")
         conn.commit()
@@ -51,7 +49,7 @@ async def in_game(callback: types.CallbackQuery):
 async def random(callback: types.CallbackQuery):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    click_date = cursor.execute(f"SELECT random_time FROM users WHERE id='{callback.from_user.id}'").fetchone()[0]
+    click_date, chances = cursor.execute(f"SELECT random_time, random_chance FROM users WHERE id='{callback.from_user.id}'").fetchone()
     # Получение времени последнего нажатия
     if click_date != '':
         t = (list(map(int, click_date.split()[0].split("-"))), list(map(int, click_date.split()[1].split("."))))
@@ -59,9 +57,13 @@ async def random(callback: types.CallbackQuery):
     today = datetime.datetime.today()
 
     # Если время последнего действия больше минимального
-    if click_date == '' or today - datetime.timedelta(5) > click_date:
-        cursor.execute(f"UPDATE users SET random_time = '{today.strftime('%Y-%m-%d %H.%M.%S')}' WHERE id='{callback.from_user.id}'")
-        conn.commit()
+    if click_date == '' or today - datetime.timedelta(5) > click_date or chances > 0:
+        if chances > 0:
+            cursor.execute(f"UPDATE users SET random_chance = random_chance - 1 WHERE id='{callback.from_user.id}'")
+            conn.commit()
+        else:
+            cursor.execute(f"UPDATE users SET random_time = '{today.strftime('%Y-%m-%d %H.%M.%S')}' WHERE id='{callback.from_user.id}'")
+            conn.commit()
         data = await bot.send_dice(callback.message.chat.id, emoji='🎲')
         time.sleep(4)
         form = "попытки"
@@ -70,8 +72,10 @@ async def random(callback: types.CallbackQuery):
                 form = "попытку"
             case 5:
                 form = "попыток"
+            case 6:
+                form = "попыток"
 
-        await callback.message.answer(f"Ты получаешь {data.dice.value} {form} 🎉!!!")
+        await callback.message.answer(f"🎉 Ты получаешь <b>{data.dice.value}</b> {form}!!!")
 
         chances = cursor.execute(f"SELECT chances FROM users WHERE id='{callback.from_user.id}'").fetchone()[0]
         cursor.execute(f"UPDATE users SET chances='{chances + data.dice.value}' WHERE id={callback.from_user.id}")
@@ -80,14 +84,14 @@ async def random(callback: types.CallbackQuery):
     else:
         remains = str(datetime.timedelta(5) - (today - click_date)).split(", ")
         days, timee = remains[0].split()[0], remains[1].split(":")
-        await callback.message.answer(f"⏳ К сожалению, не прошло достаточно времени! Ты сможешь снова сыграть в игру через {days} дн. {timee[0]} ч. {timee[1]} мин.")
+        await callback.message.answer(f"⏳ К сожалению, не прошло достаточно времени! Ты сможешь снова сыграть в игру через <b>{days} дн. {timee[0]} ч. {timee[1]} мин</b>.")
         cursor.close()
 
 # Заброс в кольцо
 async def lucky_shot(callback: types.CallbackQuery):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    click_date = cursor.execute(f"SELECT luckyshot_time FROM users WHERE id='{callback.from_user.id}'").fetchone()[0]
+    click_date, chances = cursor.execute(f"SELECT luckyshot_time, luckyshot_chance FROM users WHERE id='{callback.from_user.id}'").fetchone()
 
     # Получение времени последнего нажатия
     if click_date != '':
@@ -96,9 +100,13 @@ async def lucky_shot(callback: types.CallbackQuery):
     today = datetime.datetime.today()
 
     # Если время последнего действия больше минимального
-    if click_date == '' or today - datetime.timedelta(1) > click_date:
-        cursor.execute(f"UPDATE users SET luckyshot_time = '{today.strftime('%Y-%m-%d %H.%M.%S')}' WHERE id='{callback.from_user.id}'")
-        conn.commit()
+    if click_date == '' or today - datetime.timedelta(1) > click_date or chances > 0:
+        if chances > 0:
+            cursor.execute(f"UPDATE users SET luckyshot_chance = luckyshot_chance - 1 WHERE id='{callback.from_user.id}'")
+            conn.commit()
+        else:
+            cursor.execute(f"UPDATE users SET luckyshot_time = '{today.strftime('%Y-%m-%d %H.%M.%S')}' WHERE id='{callback.from_user.id}'")
+            conn.commit()
         data = await bot.send_dice(callback.message.chat.id, emoji='🏀')
         time.sleep(4.5)
         if data.dice.value < 4:
@@ -111,7 +119,7 @@ async def lucky_shot(callback: types.CallbackQuery):
             cursor.close()
     else:
         remains = str(datetime.timedelta(1) - (today - click_date)).split(":")
-        await callback.message.answer(f"⏳ К сожалению, не прошло достаточно времени! Ты сможешь снова сыграть в игру через {remains[0]} ч. {remains[1]} мин.")
+        await callback.message.answer(f"⏳ К сожалению, не прошло достаточно времени! Ты сможешь снова сыграть в игру через <b>{remains[0]} ч. {remains[1]} мин</b>.", parse_mode="HTML")
         cursor.close()
 
 # Квиз
@@ -135,7 +143,7 @@ async def quiz(callback: types.CallbackQuery, state: FSMContext):
             await callback.message.answer("Скоро мы добавим новый вопрос")
             cursor.close()
     else:
-        await callback.message.answer("Вы уже отвечали на квиз. Скоро мы добавим новый вопрос")
+        await callback.message.answer("⏳ Ты уже отвечал на Квиз. Скоро мы добавим новый вопрос...")
         cursor.close()
 
 
@@ -162,7 +170,6 @@ async def disclaim_quiz(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(Quiz.QUESTION)
 
 async def next_card(callback: types.CallbackQuery):
-    #TODO: поменять технологию получения списка всех кард
     if callback.data.split("_")[-1] == "card" or callback.data.split("_")[-1] == "trans":
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -187,11 +194,13 @@ async def next_card(callback: types.CallbackQuery):
             cursor.close()
 
     elif callback.data.split("_")[-1] == "search":
-        from data.forms import search_cards
-
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        nickname = cursor.execute(f"SELECT nickname FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        search_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.player) = '{nickname.lower()}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_search_index = cursor.execute(f"SELECT card_search_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+
         if card_search_index + 1 < len(search_cards):
             cursor.execute(f"UPDATE indexes SET card_search_index=card_search_index+1 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
@@ -210,14 +219,16 @@ async def next_card(callback: types.CallbackQuery):
             await callback.answer("Это последняя карточка")
 
     elif callback.data.split("_")[-1] == "rank":
-        from data.utils import search_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
         card_rank_index = cursor.execute(f"SELECT card_rank_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        rank = cursor.execute(f"SELECT rank FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        search_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.rank = '{rank}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
+
         if card_rank_index + 1 < len(search_cards):
             cursor.execute(f"UPDATE indexes SET card_rank_index=card_rank_index+1 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
-            cursor.close()
             card_rank_index += 1
             card = utils.Card(search_cards[card_rank_index])
             if callback.data.split("_")[-2] == "trans":
@@ -235,19 +246,27 @@ async def next_card(callback: types.CallbackQuery):
             await callback.answer("Это последняя карточка")
 
     elif callback.data.split("_")[-1] == "team":
-        from data.forms import team_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        team = cursor.execute(f"SELECT team FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        team_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.team) = '{team.lower()}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_team_index = cursor.execute(f"SELECT card_team_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
 
         if card_team_index + 1 < len(team_cards):
             cursor.execute(f"UPDATE indexes SET card_team_index=card_team_index+1 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
-            cursor.close()
             card_team_index += 1
             card = utils.Card(team_cards[card_team_index])
-            await draw_card(typ="team", tek=card_team_index + 1, all=len(team_cards), card=card,
-                            callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                cursor.execute(f"UPDATE indexes SET card_transfer_index={card.id} WHERE user_id='{callback.from_user.id}'")
+                conn.commit()
+                cursor.close()
+                await draw_card(typ="team", tek=card_team_index + 1, is_transfer=True, all=len(team_cards), card=card, callback=callback)
+            else:
+                cursor.close()
+                await draw_card(typ="team", tek=card_team_index + 1, all=len(team_cards), card=card,
+                                callback=callback)
         else:
             cursor.close()
             await callback.answer("Это последняя карточка")
@@ -281,10 +300,13 @@ async def prev_card(callback: types.CallbackQuery):
             await callback.answer("Это первая карточка в коллекции")
 
     elif callback.data.split("_")[-1] == "search":
-        from data.forms import search_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        nickname = cursor.execute(f"SELECT nickname FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        search_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.player) = '{nickname.lower()}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_search_index = cursor.execute(f"SELECT card_search_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+
         if card_search_index - 1 >= 0:
             cursor.execute(f"UPDATE indexes SET card_search_index=card_search_index-1 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
@@ -303,10 +325,13 @@ async def prev_card(callback: types.CallbackQuery):
             await callback.answer("Это первая карточка")
 
     elif callback.data.split("_")[-1] == "rank":
-        from data.utils import search_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        rank = cursor.execute(f"SELECT rank FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        search_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.rank = '{rank}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_rank_index = cursor.execute(f"SELECT card_rank_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+
         if card_rank_index - 1 >= 0:
             cursor.execute(f"UPDATE indexes SET card_rank_index=card_rank_index-1 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
@@ -327,18 +352,27 @@ async def prev_card(callback: types.CallbackQuery):
             await callback.answer("Это первая карточка")
 
     elif callback.data.split("_")[-1] == "team":
-        from data.forms import team_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        team = cursor.execute(f"SELECT team FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        team_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.team) = '{team.lower()}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_team_index = cursor.execute(f"SELECT card_team_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+
         if card_team_index - 1 >= 0:
             cursor.execute(f"UPDATE indexes SET card_team_index=card_team_index-1 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
-            cursor.close()
             card_team_index -= 1
             card = utils.Card(team_cards[card_team_index])
-            await draw_card(typ="team", tek=card_team_index + 1, all=len(team_cards), card=card,
-                            callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                cursor.execute(f"UPDATE indexes SET card_transfer_index={card.id} WHERE user_id='{callback.from_user.id}'")
+                conn.commit()
+                cursor.close()
+                await draw_card(typ="team", tek=card_team_index + 1, is_transfer=True, all=len(team_cards), card=card, callback=callback)
+            else:
+                cursor.close()
+                await draw_card(typ="team", tek=card_team_index + 1, all=len(team_cards), card=card,
+                                callback=callback)
         else:
             cursor.close()
             await callback.answer("Это первая карточка")
@@ -369,10 +403,13 @@ async def first_card(callback: types.CallbackQuery):
             await callback.answer("Это последняя карта, добавленная в вашу коллекцию")
 
     elif callback.data.split("_")[-1] == "search":
-        from data.forms import search_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        nickname = cursor.execute(f"SELECT nickname FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        search_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.player) = '{nickname.lower()}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_search_index = cursor.execute(f"SELECT card_search_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+
         if card_search_index != 0:
             cursor.execute(f"UPDATE indexes SET card_search_index=0 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
@@ -392,10 +429,13 @@ async def first_card(callback: types.CallbackQuery):
             await callback.answer("Это последняя карта, добавленная в вашу коллекцию")
 
     elif callback.data.split("_")[-1] == "rank":
-        from data.utils import search_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        rank = cursor.execute(f"SELECT rank FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        search_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.rank = '{rank}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_rank_index = cursor.execute(f"SELECT card_rank_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+
         if card_rank_index != 0:
             cursor.execute(f"UPDATE indexes SET card_rank_index=0 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
@@ -416,18 +456,26 @@ async def first_card(callback: types.CallbackQuery):
             await callback.answer("Это последняя карта, добавленная в вашу коллекцию")
 
     elif callback.data.split("_")[-1] == "team":
-        from data.forms import team_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+        team = cursor.execute(f"SELECT team FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        team_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.team) = '{team.lower()}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_team_index = cursor.execute(f"SELECT card_team_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+
         if card_team_index != 0:
             cursor.execute(f"UPDATE indexes SET card_team_index=0 WHERE user_id='{callback.from_user.id}'")
             conn.commit()
-            cursor.close()
             card_team_index = 0
             card = utils.Card(team_cards[card_team_index])
-            await draw_card(typ="team", tek=card_team_index + 1, all=len(team_cards), card=card,
-                            callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                cursor.execute(f"UPDATE indexes SET card_transfer_index={card.id} WHERE user_id='{callback.from_user.id}'")
+                conn.commit()
+                cursor.close()
+                await draw_card(typ="team", tek=card_team_index + 1, is_transfer=True, all=len(team_cards), card=card, callback=callback)
+            else:
+                cursor.close()
+                await draw_card(typ="team", tek=card_team_index + 1, all=len(team_cards), card=card,
+                                callback=callback)
         else:
             cursor.close()
             await callback.answer("Это последняя карта, добавленная в вашу коллекцию")
@@ -459,9 +507,11 @@ async def last_card(callback: types.CallbackQuery):
             await callback.answer("Это первая карта, добавленная в вашу коллекцию")
 
     elif callback.data.split("_")[-1] == "search":
-        from data.forms import search_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        nickname = cursor.execute(f"SELECT nickname FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        search_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.player) = '{nickname.lower()}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_search_index = cursor.execute(f"SELECT card_search_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
 
         if (card_search_index != len(search_cards) - 1) and len(search_cards) != 1:
@@ -482,9 +532,11 @@ async def last_card(callback: types.CallbackQuery):
             await callback.answer("Это первая карта, добавленная в вашу коллекцию")
 
     elif callback.data.split("_")[-1] == "rank":
-        from data.utils import search_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
+        rank = cursor.execute(f"SELECT rank FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        search_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND cards.rank = '{rank}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
         card_rank_index = cursor.execute(f"SELECT card_rank_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
 
         if (card_rank_index != len(search_cards) - 1) and len(search_cards) != 1:
@@ -507,21 +559,31 @@ async def last_card(callback: types.CallbackQuery):
             await callback.answer("Это первая карта, добавленная в вашу коллекцию")
 
     elif callback.data.split("_")[-1] == "team":
-        from data.forms import team_cards
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+
         card_team_index = cursor.execute(f"SELECT card_team_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        team = cursor.execute(f"SELECT team FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+        team_cards = cursor.execute(f"SELECT cards.id, cards.player, cards.team, cards.rank, cards.score FROM cards, collections WHERE cards.id = collections.card_id AND LOWER(cards.team) = '{team.lower()}' AND collections.user_id='{callback.from_user.id}'").fetchall()[::-1]
 
         if (card_team_index != len(team_cards) - 1) and len(team_cards) != 1:
             cursor.execute(f"UPDATE indexes SET card_team_index='{len(team_cards) - 1}' WHERE user_id='{callback.from_user.id}'")
             conn.commit()
-            cursor.close()
             card_team_index = len(team_cards) - 1
             card = utils.Card(team_cards[card_team_index])
-            print(card_team_index + 1)
-            await draw_card(typ="team", tek=card_team_index + 1, all=len(team_cards), card=card,
-                            callback=callback)
+            if callback.data.split("_")[-2] == "trans":
+                cursor.execute(
+                    f"UPDATE indexes SET card_transfer_index={card.id} WHERE user_id='{callback.from_user.id}'")
+                conn.commit()
+                cursor.close()
+                await draw_card(typ="team", tek=card_team_index + 1, is_transfer=True, all=len(team_cards), card=card,
+                                callback=callback)
+            else:
+                cursor.close()
+                await draw_card(typ="team", tek=card_team_index + 1, all=len(team_cards), card=card,
+                                callback=callback)
         else:
+            cursor.close()
             await callback.answer("Это первая карта, добавленная в вашу коллекцию")
 
 
@@ -593,7 +655,10 @@ async def sort_rank(callback: types.CallbackQuery):
 async def by_team(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         "👥 Здесь ты можешь отфильтровать карты из своей коллекции по команде. Введи название команды ниже:")
-    await state.set_state(Team.TEAM)
+    if callback.data.split("_")[-1] != "trans":
+        await state.set_state(Team.TEAM)
+    else:
+        await state.set_state(Team.TEAM_TRANS)
 
 async def create_transfer(callback: types.CallbackQuery):
     await callback.message.answer(f"♻️ Здесь ты можешь обменяться картами с другими игроками! "
@@ -613,12 +678,11 @@ async def create_transfer(callback: types.CallbackQuery):
         cursor.close()
         if len(card_info) == 5:
             card = utils.Card(card_info)
-            await draw_card(typ="base", tek=1, is_transfer=True, all=length, card=card, message=callback.message)
+            await draw_card(typ="base", tek=1, is_transfer=True, all=length, card=card, message=callback.message, usr_id=callback.from_user.id)
         else:
             await callback.message.answer("Кажется, в твоей коллекции нет карт ❌")
     except IndexError as e:
         await callback.message.answer("Кажется, в твоей коллекции нет карт ❌")
-
 
 async def add_card1(callback: types.CallbackQuery, state: FSMContext):
     conn = sqlite3.connect('database.db')
@@ -629,17 +693,17 @@ async def add_card1(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.answer("📝 Карта выбрана, укажи ID игрока, с которым ты бы хотел совершить обмен")
         await state.set_state(TransferID.ID)
     else:
+
         id = cursor.execute(f"SELECT user_id_1 FROM transfers WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()[0]
         # Вторая карта
         card_id = cursor.execute(f"SELECT card_transfer_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
-
-        cursor.execute(f"UPDATE transfers SET card_id_2='{card_id}' WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()
-        conn.commit()
         card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{card_id}'").fetchone()
 
         transfer_card = utils.Card(card_info)
 
-        text = f"""🔤 Никнейм: <b>{transfer_card.name}</b> 
+        text = f"""<b>Выбранная карта для обмена с игроком {id}:</b>
+        
+🔤 Никнейм: <b>{transfer_card.name}</b> 
 
 🕹 Команда: <b>{transfer_card.team}</b>
 
@@ -647,29 +711,81 @@ async def add_card1(callback: types.CallbackQuery, state: FSMContext):
 
 🔢 Очки: <b>{transfer_card.score}</b>"""
 
-        photo = FSInputFile(path=f"./cards/{transfer_card.id}.webp")
-        text = f"<b>👀 Игрок {callback.from_user.id} прислал ответ на твой запрос на обмен. Посмотри, что он предлагает:</b>\n\n{text}"
+        photo = FSInputFile(path=f"./cards/{transfer_card.id}.jpg")
 
-        rowid = cursor.execute(f"SELECT id FROM collections WHERE user_id='{callback.from_user.id}' AND card_id='{transfer_card.id}'").fetchall()[::-1][0]
-        cursor.execute(f"DELETE FROM collections WHERE id='{rowid[0]}'")
-        conn.commit()
-        cursor.close()
-
-        accept_transfer_ikb = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="✅ Принять",
-                    callback_data=f"last_accept_{callback.from_user.id}_{card_id}"
+        accept_ikb = InlineKeyboardMarkup(inline_keyboard=[
+             [
+                 InlineKeyboardButton(
+                     text="✅ Подтвердить",
+                     callback_data=f"user_2_accept"
                 )],
-            [InlineKeyboardButton(
-                text="❌ Отклонить",
-                callback_data=f"last_decline_{callback.from_user.id}_{card_id}"
-            )]
-        ], resize_keyboard=True)
+             [InlineKeyboardButton(
+                 text="❌ Выбрать другую карту",
+                 callback_data=f"user_2_decline"
+             )]
+         ], resize_keyboard=True)
+        await bot.send_photo(callback.from_user.id, photo=photo, caption=text, parse_mode="HTML", reply_markup=accept_ikb)
 
-        await bot.send_photo(chat_id=int(id), photo=photo, caption=text, parse_mode="HTML", reply_markup=accept_transfer_ikb)
-        await callback.message.answer("✅ Ответный запрос на обмен игроку никнейм отправлен")
+async def user_2_accept(callback: types.CallbackQuery):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
 
+    id = cursor.execute(f"SELECT user_id_1 FROM transfers WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()[0]
+    card_id = cursor.execute(f"SELECT card_transfer_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+    cursor.execute(f"UPDATE transfers SET card_id_2='{card_id}' WHERE user_id_2='{callback.from_user.id}' AND status='answer'").fetchone()
+    conn.commit()
+
+    card_id = cursor.execute(f"SELECT card_transfer_index FROM indexes WHERE user_id='{callback.from_user.id}'").fetchone()[0]
+    card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{card_id}'").fetchone()
+
+    transfer_card = utils.Card(card_info)
+
+    text = f"""🔤 Никнейм: <b>{transfer_card.name}</b> 
+
+🕹 Команда: <b>{transfer_card.team}</b>
+
+🎖 Звание: <b>{transfer_card.rank}</b>
+
+🔢 Очки: <b>{transfer_card.score}</b>"""
+
+    photo = FSInputFile(path=f"./cards/{transfer_card.id}.jpg")
+    text = f"<b>👀 Игрок {callback.from_user.id} прислал ответ на твой запрос на обмен. Посмотри, что он предлагает:</b>\n\n{text}"
+
+    rowid = cursor.execute(f"SELECT id FROM collections WHERE user_id='{callback.from_user.id}' AND card_id='{transfer_card.id}'").fetchall()[::-1][0]
+    cursor.execute(f"DELETE FROM collections WHERE id='{rowid[0]}'")
+    conn.commit()
+    cursor.close()
+
+    accept_transfer_ikb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="✅ Принять",
+                callback_data=f"last_accept_{callback.from_user.id}_{card_id}"
+            )],
+        [InlineKeyboardButton(
+            text="❌ Отклонить",
+            callback_data=f"last_decline_{callback.from_user.id}_{card_id}"
+        )]
+    ], resize_keyboard=True)
+    await callback.message.delete()
+    await bot.send_photo(chat_id=int(id), photo=photo, caption=text, parse_mode="HTML", reply_markup=accept_transfer_ikb)
+    await callback.message.answer(f"✅ Ответный запрос на обмен игроку {id} отправлен")
+
+
+async def user_2_decline(callback: types.CallbackQuery):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+
+    await callback.message.answer("♻️ Выбери карту, которую хочешь обменять. Для удобства можешь отфильтровать свои карты по определенному критерию.")
+
+    user_card_id = cursor.execute(f"SELECT card_id FROM collections WHERE user_id='{callback.from_user.id}'").fetchall()[::-1][0][0]
+    card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_id}'").fetchone()
+    cursor.execute(f"UPDATE transfers SET status='answer' WHERE user_id_1='{callback.message.caption.split()[6][:-1]}' AND user_id_2='{callback.from_user.id}' AND status='active'").fetchone()
+    conn.commit()
+    cursor.close()
+    card = utils.Card(card_info)
+    await callback.message.delete()
+    await draw_card(typ="base", tek=1, is_transfer=True, all=1, card=card, callback=callback, send=True)
 
 async def accept_transfer(callback: types.CallbackQuery):
     conn = sqlite3.connect('database.db')
@@ -713,6 +829,7 @@ async def last_accept(callback: types.CallbackQuery):
     cursor.execute(f"UPDATE transfers SET status='finished' WHERE user_id_2='{user_id_2}' AND user_id_1='{callback.from_user.id}' AND card_id_2='{card_id_2}' AND status='answer'")
     conn.commit()
     cursor.close()
+    await callback.message.delete()
     await bot.send_message(chat_id=int(user_id_2), text=f"🎉 Поздравляем тебя с успешным обменом с игроком {callback.from_user.id}! Наслаждайся своей новой картой!", parse_mode="HTML")
     await callback.message.answer(f"🎉 Поздравляем тебя с успешным обменом с игроком {user_id_2}! Наслаждайся своей новой картой!")
 
@@ -728,12 +845,12 @@ async def last_decline(callback: types.CallbackQuery):
     conn.commit()
     cursor.execute(f"UPDATE transfers SET status='decline' WHERE user_id_2='{user_id_2}' AND user_id_1='{callback.from_user.id}' AND card_id_1='{card_id_1}' AND card_id_2='{card_id_2}' AND status='answer'")
     conn.commit()
+    await callback.message.delete()
     await callback.message.answer(f"❌ Ты отклонил запрос на обмен от игрока c ID {user_id_2}")
     await bot.send_message(chat_id=int(user_id_2), text=f"❌ Игрок c ID {callback.from_user.id} отклонил твое предложение на обмен")
     cursor.close()
 
 async def tek_transfers(callback: types.CallbackQuery):
-    # TODO
     conn = sqlite3.connect('./database.db')
     cursor = conn.cursor()
     has_transfer = cursor.execute(f"SELECT * FROM transfers WHERE user_id_1='{callback.from_user.id}' AND status='active'").fetchone()
@@ -769,7 +886,7 @@ async def tek_transfers(callback: types.CallbackQuery):
 
 🔢 Очки: <b>{card.score}</b>"""
 
-        photo = FSInputFile(path=f"./cards/{card.id}.webp")
+        photo = FSInputFile(path=f"./cards/{card.id}.jpg")
 
         await callback.message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=tek_transfer_ikb)
 
@@ -814,7 +931,7 @@ async def tek_next(callback: types.CallbackQuery):
 
 🔢 Очки: <b>{card.score}</b>"""
 
-        photo = FSInputFile(path=f"./cards/{card.id}.webp")
+        photo = FSInputFile(path=f"./cards/{card.id}.jpg")
 
         await callback.message.edit_media(InputMediaPhoto(media=photo, caption=text), parse_mode="HTML", reply_markup=tek_transfer_ikb)
     else:
@@ -857,7 +974,7 @@ async def tek_prev(callback: types.CallbackQuery):
 
 🔢 Очки: <b>{card.score}</b>"""
 
-        photo = FSInputFile(path=f"./cards/{card.id}.webp")
+        photo = FSInputFile(path=f"./cards/{card.id}.jpg")
 
         await callback.message.edit_media(InputMediaPhoto(media=photo, caption=text), parse_mode="HTML", reply_markup=tek_transfer_ikb)
     else:
@@ -877,7 +994,7 @@ async def tek_decline(callback: types.CallbackQuery):
         conn.commit()
         cursor.close()
         await callback.message.delete()
-        await callback.message.answer(f"🗑 Обмен с игроком {user_id} успешно отменен")
+        await callback.message.answer(f"🗑 Обмен с игроком <b>{user_id}</b> успешно отменен", parse_mode="HTML")
     except Exception as e:
         print(e)
         await callback.answer(f"Что-то пошло не так")
@@ -896,9 +1013,9 @@ async def finished_transfers(callback: types.CallbackQuery):
 
         for i in range(len(all_transfers)):
             if all_transfers[i][0] == callback.from_user.id:
-                text += f"\n\n{i + 1}. Ты получил <b>{data_2[i][0]} | {data_2[i][1]}</b> от игрока с ID <b><code>{all_transfers[i][1]}</code></b> в обмен на <b>{data_1[i][0]} | {data_1[i][1]}</b>"
+                text += f"\n\n{i + 1}. Ты получил <b>{data_2[i][0]} | {data_2[i][1]}</b> от игрока с ID <b>{all_transfers[i][1]}</b> в обмен на <b>{data_1[i][0]} | {data_1[i][1]}</b>"
             if all_transfers[i][1] == callback.from_user.id:
-                text += f"\n\n{i + 1}. Ты получил <b>{data_1[i][0]} | {data_1[i][1]}</b> от игрока с ID <b><code>{all_transfers[i][0]}</code></b> в обмен на <b>{data_2[i][0]} | {data_2[i][1]}</b>"
+                text += f"\n\n{i + 1}. Ты получил <b>{data_1[i][0]} | {data_1[i][1]}</b> от игрока с ID <b>{all_transfers[i][0]}</b> в обмен на <b>{data_2[i][0]} | {data_2[i][1]}</b>"
 
         await callback.message.answer(text)
         cursor.close()
@@ -908,10 +1025,10 @@ async def finished_transfers(callback: types.CallbackQuery):
 
 async def donate(callback: types.CallbackQuery):
     await callback.message.delete()
-    await callback.message.answer('🌐 Выбери из списка необходимое количество внутриигровой валюты:', reply_markup=want_currency_ikb)
+    await callback.message.answer('🌐 Выбери из списка необходимое количество внутриигровой валюты:\n\n<b>15</b> 🔫 - <b>60</b> рублей‍\n<b>30</b> 🔫 - <b>100</b> рублей‍\n<b>60</b> 🔫 - <b>180</b> рублей‍\n<b>100</b> 🔫 - <b>250</b> рублей‍\n<b>200</b> 🔫 - <b>400</b> рублей‍\n<b>500</b> 🔫 - <b>750</b> рублей‍\n\n💻 Напиши нашим админам @dpdp228 или @leosnowsky свой ID ( 461485831 ) для пополнения валюты. Он ответит тебе в ближайшее время!', parse_mode="HTML")
 
 async def want_currency(callback: types.CallbackQuery):
-    await callback.message.answer(f"🧑‍💻 Напиши нашему админу свой ID ( <code>{callback.from_user.id}</code> ) для пополнения валюты. Он ответит тебе в ближайшее время!", parse_mode="HTML")
+    await callback.message.answer(f"🧑‍💻 Напиши нашим админам @dpdp228 или @leosnowsky свой ID ( <code>{callback.from_user.id}</code> ) для пополнения валюты. Он ответит тебе в ближайшее время!", parse_mode="HTML")
 
 async def purchases(callback: types.CallbackQuery):
     await callback.message.delete()
@@ -966,7 +1083,8 @@ async def buy_conf(callback: types.CallbackQuery):
         case "random":
             cursor.execute(f"UPDATE users SET credits=credits-'{price}',  random_chance=random_chance+'{chances}' WHERE id='{callback.from_user.id}'")
         case "shot":
-            cursor.execute(f"UPDATE users SET credits=credits-'{price}',  luckyshot_chance=luckyshot_chance+'{chances}' WHERE id='{callback.from_user.id}'")
+            cursor.execute(f"UPDATE users SET credits=credits-'{price}', luckyshot_chance=luckyshot_chance+'{chances}' WHERE id='{callback.from_user.id}'")
+            print("Asdf")
     conn.commit()
     cursor.close()
     await callback.message.answer("Покупка прошла успешно 🎉")
