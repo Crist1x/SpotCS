@@ -5,7 +5,7 @@ in_game_ikb = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(
             text="Наш канал",
-            url="https://t.me/cscardss"
+            url="https://t.me/defaultcscard"
         )
     ], [InlineKeyboardButton(
             text="В игру",
@@ -17,7 +17,7 @@ channel_ikb = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(
             text="Подписаться",
-            url="https://t.me/cscardss"
+            url="https://t.me/defaultcscard"
         )
     ], [InlineKeyboardButton(
             text="В игру",

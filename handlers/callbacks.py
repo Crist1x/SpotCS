@@ -790,17 +790,26 @@ async def user_2_decline(callback: types.CallbackQuery):
 async def accept_transfer(callback: types.CallbackQuery):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
+    status = cursor.execute(f"SELECT status FROM transfers WHERE user_id_2='{callback.from_user.id}' AND status='active'").fetchone()
+    if status:
+        await callback.message.answer(
+            "♻️ Выбери карту, которую хочешь обменять. Для удобства можешь отфильтровать свои карты по определенному критерию.")
 
-    await callback.message.answer("♻️ Выбери карту, которую хочешь обменять. Для удобства можешь отфильтровать свои карты по определенному критерию.")
-
-    user_card_id = cursor.execute(f"SELECT card_id FROM collections WHERE user_id='{callback.from_user.id}'").fetchall()[::-1][0][0]
-    print(user_card_id)
-    card_info = cursor.execute(f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_id}'").fetchone()
-    cursor.execute(f"UPDATE transfers SET status='answer' WHERE user_id_1='{callback.message.caption.split()[2]}' AND user_id_2='{callback.from_user.id}' AND status='active'").fetchone()
-    conn.commit()
-    cursor.close()
-    card = utils.Card(card_info)
-    await draw_card(typ="base", tek=1, is_transfer=True, all=1, card=card, callback=callback, send=True)
+        user_card_id = \
+        cursor.execute(f"SELECT card_id FROM collections WHERE user_id='{callback.from_user.id}'").fetchall()[::-1][0][
+            0]
+        card_info = cursor.execute(
+            f"SELECT id, player, team, rank, score FROM cards WHERE id='{user_card_id}'").fetchone()
+        cursor.execute(
+            f"UPDATE transfers SET status='answer' WHERE user_id_1='{callback.message.caption.split()[2]}' AND user_id_2='{callback.from_user.id}' AND status='active'").fetchone()
+        conn.commit()
+        cursor.close()
+        card = utils.Card(card_info)
+        await draw_card(typ="base", tek=1, is_transfer=True, all=1, card=card, callback=callback, send=True)
+    else:
+        cursor.close()
+        await callback.message.delete()
+        await callback.message.answer("❌ Игрок отменил этот обмен")
 
 
 async def decline_transfer(callback: types.CallbackQuery):
@@ -813,7 +822,7 @@ async def decline_transfer(callback: types.CallbackQuery):
     cursor.execute(f"UPDATE transfers SET status='decline' WHERE user_id_2='{callback.from_user.id}' AND user_id_1='{user_id}' AND card_id_1='{card_id}' AND status='active'")
     conn.commit()
     await callback.message.answer(f"❌ Ты отклонил запрос на обмен от игрока c ID {user_id}")
-    await bot.send_message(chat_id=int(user_id), text=f"❌ Игрок c ID {callback.from_user.id} отклонил твой запрос на обмен")
+    await bot.send_message(chat_id=int(user_id), text=f"❌ Игрок c ID <b>{callback.from_user.id}</b> отклонил твой запрос на обмен", parse_mode="HTML")
     cursor.close()
 
 
@@ -822,11 +831,17 @@ async def last_accept(callback: types.CallbackQuery):
     conn = sqlite3.connect('./database.db')
     cursor = conn.cursor()
     card_id_1 = cursor.execute(f"SELECT card_id_1 FROM transfers WHERE user_id_2='{user_id_2}' AND user_id_1='{callback.from_user.id}' AND card_id_2='{int(card_id_2)}' AND status='answer'").fetchone()[0]
+    score_card_1 = cursor.execute(f"SELECT score FROM cards WHERE id='{card_id_1}'").fetchone()[0]
+    score_card_2 = cursor.execute(f"SELECT score FROM cards WHERE id='{card_id_2}'").fetchone()[0]
     cursor.execute(f"INSERT INTO collections (user_id, card_id) VALUES ('{callback.from_user.id}', '{card_id_2}')")
     conn.commit()
     cursor.execute(f"INSERT INTO collections (user_id, card_id) VALUES ('{user_id_2}', '{card_id_1}')")
     conn.commit()
     cursor.execute(f"UPDATE transfers SET status='finished' WHERE user_id_2='{user_id_2}' AND user_id_1='{callback.from_user.id}' AND card_id_2='{card_id_2}' AND status='answer'")
+    conn.commit()
+    cursor.execute(f"UPDATE users SET season_score=season_score-{score_card_1}+{score_card_2} WHERE id='{callback.from_user.id}'")
+    conn.commit()
+    cursor.execute(f"UPDATE users SET season_score=season_score-{score_card_2}+{score_card_1} WHERE id='{user_id_2}'")
     conn.commit()
     cursor.close()
     await callback.message.delete()
@@ -846,8 +861,8 @@ async def last_decline(callback: types.CallbackQuery):
     cursor.execute(f"UPDATE transfers SET status='decline' WHERE user_id_2='{user_id_2}' AND user_id_1='{callback.from_user.id}' AND card_id_1='{card_id_1}' AND card_id_2='{card_id_2}' AND status='answer'")
     conn.commit()
     await callback.message.delete()
-    await callback.message.answer(f"❌ Ты отклонил запрос на обмен от игрока c ID {user_id_2}")
-    await bot.send_message(chat_id=int(user_id_2), text=f"❌ Игрок c ID {callback.from_user.id} отклонил твое предложение на обмен")
+    await callback.message.answer(f"❌ Ты отклонил запрос на обмен от игрока c ID <b>{user_id_2}</b>", parse_mode="HTML")
+    await bot.send_message(chat_id=int(user_id_2), text=f"❌ Игрок c ID <b>{callback.from_user.id}</b> отклонил твое предложение на обмен", parse_mode="HTML")
     cursor.close()
 
 async def tek_transfers(callback: types.CallbackQuery):

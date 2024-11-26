@@ -337,7 +337,7 @@ async def get_card_rank(message: Message, state: FSMContext):
 
         conn = sqlite3.connect('./database.db')
         cursor = conn.cursor()
-        cursor.execute(f"INSERT INTO cards ('id', 'player', 'team', 'rank', 'amount', 'score') VALUES ('{data['id']}', '{data['nickname']}', '{data['team']}', '{data['rank']}', 50, '{score}')")
+        cursor.execute(f"INSERT INTO cards ('id', 'player', 'team', 'rank', 'amount', 'score') VALUES ('{data['id']}', '{data['nickname']}', '{data['team']}', '{data['rank']}', 5000, '{score}')")
         conn.commit()
         cursor.close()
         await message.answer("Карта успешно добавлена", reply_markup=admin_menu_kb)
